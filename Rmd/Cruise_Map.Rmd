@@ -75,7 +75,7 @@ kable(station.coord, caption = "NAAMES 3 and 4 Station Coordinates ")
 ll_mean = c(mean(pts$lon, na.rm=T), mean(pts$lat, na.rm = T))
 
 #get raster background map data --- need to acquire google maps api
-#gkey <- register_google("AIzaSyCwRox9gfIIDtdqnCdKGDwrJFFveEMqYU4", write=T)
+
 ggm = get_map(location = ll_mean,  maptype = "terrain", source = "google", zoom=4, color="color")
 
 #create map

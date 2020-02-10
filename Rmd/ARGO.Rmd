@@ -1,0 +1,300 @@
+---
+title: "ARGO"
+author: "Nicholas Baetge"
+date: "2/6/2020"
+output: html_document
+---
+
+# Intro
+
+This document highlights how MLDs were calculated from the ARGO floats deployed on the NAAMES cruises. 
+
+- Input data, which were the level 2 processed data, were pulled from the [NAAMES data page](https://naames.larc.nasa.gov/data2018.html)
+- MLDs were calculated using the N^2^ buoyancy frequency and are defined as the depth below 5 m at which N^2^ > |stdev(N^2^)|
+
+```{r include=FALSE}
+library(tidyverse)
+library(knitr)
+library(data.table) 
+library(zoo) 
+library(oce)  
+library(scales)
+#for mapping
+library(marmap)
+library(ggrepel)
+library(ocedata)
+library(ggmap)
+#for odv type plots
+library(lubridate)
+library(reshape2)
+library(MBA)
+library(mgcv)
+#colors
+library(RColorBrewer)
+
+
+custom_theme <- function () {
+  theme_test(base_size=30) %+replace%
+    theme(legend.position="top",
+          legend.spacing.x = unit(0.5,"cm"),
+          legend.background = element_rect(fill = "transparent",colour = NA),
+          legend.key = element_rect(fill = "transparent",colour = NA),
+          panel.background = element_rect(fill = "transparent",colour = NA),
+          plot.background = element_rect(fill = "transparent",colour = NA)) 
+}
+```
+
+# Import and Wrangle Data
+
+```{r warning = FALSE, message = FALSE}
+#load each float dataset
+lovbio014b <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/lovbio014b_profiles.csv") %>%  
+  mutate(float = "lovbio014b") %>% select(float, id, datetime:s, chla_adj) %>%
+  rename(chla = chla_adj)
+lovbio030b <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/lovbio030b_profiles.csv") %>%  
+  mutate(float = "lovbio030b") %>% select(float, id, datetime:s, chla_adj) %>%
+  rename(chla = chla_adj)
+lovbio032b <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/lovbio032b_profiles.csv") %>%  
+  mutate(float = "lovbio032b") %>% select(float, id, datetime:s, chla_adj) %>%
+  rename(chla = chla_adj)
+metbio003d <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/metbio003d_profiles.csv") %>%  
+  mutate(float = "metbio003d") %>% select(float, id, datetime:s, chla_adj) %>%
+  rename(chla = chla_adj)
+metbio010d <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/metbio010d_profiles.csv") %>%  
+  mutate(float = "metbio010d") %>% select(float, id, datetime:s, chla_adj) %>%
+  rename(chla = chla_adj)
+#this dataset contained NANs which are problematic for the potential temperature and n2 calculations. thus, they are removed here. 
+metbio010d <- metbio010d[complete.cases(metbio010d),] 
+n0572 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0572_profiles.csv") %>%  
+  mutate(float = "n0572") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0573 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0573_profiles.csv") %>%  
+  mutate(float = "n0573") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0574 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0574_profiles.csv") %>%  
+  mutate(float = "n0574") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0646 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0646_profiles.csv") %>%  
+  mutate(float = "n0646") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0647 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0647_profiles.csv") %>%  
+  mutate(float = "n0647") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0648 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0648_profiles.csv") %>%  
+  mutate(float = "n0648") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0846 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0846_profiles.csv") %>%  
+  mutate(float = "n0846") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0847 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0847_profiles.csv") %>%  
+  mutate(float = "n0847") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0848 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0848_profiles.csv") %>%  
+  mutate(float = "n0848") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0849 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0849_profiles.csv") %>%  
+  mutate(float = "n0849") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0850 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0850_profiles.csv") %>%  
+  mutate(float = "n0850") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0851 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0851_profiles.csv") %>%  
+  mutate(float = "n0851") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+n0852 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0852_profiles.csv") %>%  
+  mutate(float = "n0852") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
+  rename(chla = chla_adj)
+
+#combine all the float data
+#this first set of floats don't have O2 data
+collab_floats.df <- rbind(lovbio014b, lovbio030b, lovbio032b, metbio003d, metbio010d) %>% 
+  rename(profile = id) 
+
+naames_floats.df <- rbind(n0572, n0573, n0574, n0647, n0648, n0846, n0847, n0848, n0849, n0850, n0851, n0852) %>% 
+  rename(profile = id)
+
+all_floats.df <- naames_floats.df %>% 
+  select(-o2_c) %>% 
+  rbind(., collab_floats.df) %>% 
+  drop_na() 
+
+```
+
+# Calculations
+
+## MLDs
+
+```{r warning = FALSE, message = FALSE}
+float_mld.df  <- all_floats.df %>% 
+  group_by(float, profile, datetime) %>% 
+  mutate(sigmaT = swSigmaTheta(s, temperature = t, pressure = p, referencePressure = 0), 
+         N2 = swN2(pressure = p, sigmaTheta = sigmaT),
+         Date = as.Date(datetime, "%m/%d/%y"), 
+         Month = month(Date)) %>% 
+  #include only depths below 5 m and where  N2 is > abs(stdev(N2))
+  filter(p > 5 & N2 > abs(sd(N2))) %>%  
+  filter(p == min(p)) %>% #report the shallowest depth at which the above condition is met
+  rename(MLD = p) %>% 
+  ungroup() %>% 
+  select(float, profile, datetime, Date, Month, lat:MLD) %>% 
+  #set longitudinal and latitudinal bounds based on the extent of the NAAMES region
+  filter(between(lon, -47, -38),
+         between(lat, 39,57)) %>% 
+  mutate(bin = round(lat)) %>% 
+  arrange(bin, Date) %>%
+  select(float:datetime, lat, lon, bin, MLD) %>% 
+  group_by(bin) %>% 
+  add_tally() %>% 
+  rename(nperbin = n) %>% 
+  ungroup()
+
+mld_winter <- float_mld.df %>% 
+  select(float, profile, datetime, bin) %>%
+  mutate(month = month(datetime)) %>% 
+  filter(month %in% c(11,12,1,2,3,4)) %>% 
+  select(float, profile, month, bin) %>% 
+  group_by(bin) %>% 
+  add_tally() %>% 
+  rename(nperwinter = n) %>% 
+  select(bin, nperwinter) %>% 
+  distinct() %>% 
+  ungroup()
+
+float_mld.df <- left_join(float_mld.df, mld_winter)
+  
+```
+
+## Chl
+
+```{r}
+float_chl.df <- all_floats.df %>% 
+  #set longitudinal and latitudinal bounds based on the extent of the NAAMES region
+  filter(between(lon, -47, -38),
+         between(lat, 39,57)) %>% 
+  group_by(float, profile, datetime) %>% 
+  select(float:t, chla) %>% 
+  #correct the chlorophyll data for each profile by subtracting the min from each observation
+  mutate(min_fl = min(chla),
+         cor_fl = chla - min_fl) %>% 
+  select(float:t, cor_fl)
+```
+
+## Max MLD
+
+```{r message = FALSE}
+float_combined.df <- left_join(float_mld.df, float_chl.df) %>% 
+  mutate(decimaldate = decimal_date(datetime)) %>% 
+  ungroup() %>%
+  select(float, profile, datetime, decimaldate, lat, lon, bin, MLD, nperbin, nperwinter, p, t, cor_fl) %>% 
+  drop_na() %>% 
+  arrange(bin, decimaldate) 
+
+max_mld.df <- float_combined.df %>% 
+  arrange(bin, datetime) %>% 
+  group_by(bin) %>% 
+  select(float:nperwinter) %>% 
+  distinct() %>% 
+  mutate(max_mld = max(MLD)) %>% 
+  filter(MLD == max_mld) %>% 
+  select(-MLD) %>% 
+  distinct(.) %>% 
+  mutate(date = date_decimal(decimaldate),
+         mon = month(date, label=TRUE, abbr=TRUE),
+         year = year(date)) %>% 
+  arrange(bin) %>% 
+  select(bin, nperbin, nperwinter, max_mld, float, profile, mon, year, lat, lon )
+
+saveRDS(max_mld.df, "~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/max_mld.rds")
+
+```
+
+```{r echo = FALSE, results = 'asis'}
+kable(max_mld.df, caption = "ARGO Maximum Mixed Layers")
+```
+
+# ODV style plot 
+
+## Interpolate temperature data
+
+```{r}
+#subset the temperature and the mld data separately
+
+t.df <- float_combined.df %>% 
+  #deepest mixed layer observed from floats in NAAMES region was 508
+  filter(between(p, 0, 550)) %>% 
+  select(bin, decimaldate, p, t) %>% 
+  arrange(decimaldate, bin) %>% 
+  group_by(bin) 
+
+mld.df <- float_combined.df %>% 
+  filter(between(p, 0, 550)) %>% 
+  select(bin, decimaldate, MLD) %>% 
+  arrange(decimaldate, bin) %>% 
+  group_by(bin) 
+
+#split chl data into a list by latitudinal bin
+t.list <- split(t.df, t.df$bin)
+
+#create function to interpolate chl
+interp.func <- function(casper) {
+  dog <- casper %>% 
+    ungroup() %>% 
+    #the interpolation requires that the dataframe be comprised of only 3 columns (x, y, z)
+    select(-bin) 
+  mba <- mba.surf(dog, no.X = 300, no.Y = 300, extend = T)
+  dimnames(mba$xyz.est$z) <- list(mba$xyz.est$x, mba$xyz.est$y)
+  mba <- melt(mba$xyz.est$z, varnames = c('decimaldate', 'p'), value.name = 't') %>% 
+    filter(p > 0)
+}
+
+#apply the interpolation function to the list
+interpolated_t.list <- lapply(t.list, interp.func)
+
+#convert the list into a df for plotting
+interpolated_t.df <- data.frame(rbindlist(interpolated_t.list, idcol = T)) %>% 
+  mutate(.id = as.numeric(.id)) %>% 
+ rename(bin = .id) %>% 
+  arrange(decimaldate, bin) %>% 
+  group_by(bin) 
+
+```
+
+## Plot
+
+```{r fig.align="center", fig.height=10, fig.width=16, echo = FALSE, message=FALSE, warning=FALSE}
+
+###change odv.bin to plot different latitudinal bins
+#lat range is 39-57
+odv.bin <- 52
+
+
+t.odv <- t.df %>% filter(bin == odv.bin)
+
+interp_t.odv <- interpolated_t.df %>% filter(bin == odv.bin)
+
+mld.odv <- mld.df %>% filter(bin == odv.bin) %>% distinct(.)
+mld_spline.odv <- as_data_frame(spline(mld.odv$decimaldate, mld.odv$MLD))
+
+odv.plot <-  interp_t.odv %>% 
+  ggplot(aes(x = decimaldate, y = p)) + 
+  geom_raster(aes(fill = t)) +
+    geom_point(data = t.odv, aes(x = decimaldate, y = p, colour = t), colour = "Black", alpha = 0.3, size = 0.25, shape = 3) +
+  geom_line(data = mld.odv, aes(x = decimaldate, y = MLD), colour = "White", linetype = 2, size = 1 ) +
+    geom_point(data = mld.odv, aes(x = decimaldate, y = MLD), colour = "White", shape = 19, size = 3, alpha = 0.8) +
+    #option = "plasma" or "cividis" look good here
+    scale_fill_viridis_c(option = "viridis", direction = 1) + 
+    scale_y_reverse(breaks = pretty_breaks()) +
+    scale_x_continuous(breaks = pretty_breaks()) +
+    labs(y = expression(italic("Depth, m")), x = expression(italic("Decimal Date")), fill = expression(italic(paste("Temperature, ˚C")))) +
+    guides(fill = guide_colourbar(barheight = 2, barwidth = 20)) +
+    custom_theme() 
+
+odv.plot
+```
+
+```{r include = FALSE}
+#saveRDS(odv.plot, file = "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Figures/ARGO_52N.rds")
+
+#ggsave("Figure1b.jpg", odv.plot, device = "jpg",  width = 16, height= 10, path="~/Desktop/Export_MS/Submission2/") 
+```
+

@@ -1,0 +1,395 @@
+---
+title: "Bottle File"
+author: "Nicholas Baetge"
+date: "2/6/2020"
+output: html_document
+---
+
+# Intro
+
+This document shows how the shared [NAAMES bottle file](https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=775961124) was processed prior to analysis. 
+
+- Profiles are first collapsed, such that there are one set of values for each depth sampled. 
+- Depths of 0 m, maximum MLD (estimated from NAAMES ARGO data), chl max, and phytoplankton abundance max are added to each profile. Data are interpolated for those depths (0 - 5 m are assumed to be the same).
+
+
+```{r include=FALSE}
+library(tidyverse)
+library(knitr)
+library(googledrive)
+library(googlesheets4)
+library(data.table)  
+#for interpolations
+library(zoo) 
+#for integrations
+library(oce) 
+library(scales)
+library(gridExtra)
+#for time
+library(lubridate)
+
+levels = c("GS/Sargasso", "Subtropical", "Temperate", "Subpolar",  "AT39-6", "AT34", "AT38", "AT32", "Early Spring", "Late Spring", "Early Autumn", "Late Autumn")
+
+```
+
+
+# Import Data
+
+```{r message = F, warning = FALSE}
+google.df <- read_sheet("https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=1446474071", sheet = "Bottle File", skip = 1) %>% 
+  #Station variable is read as numeric, so read_sheet turns station "1A" into an NA.
+  #we'll replace it with a 0
+  mutate(Station = ifelse(is.na(Station), 0, Station))
+
+
+#load the float-station matchup with the maximum MLD data
+float_maxmld.df <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/max_mld.rds") %>% 
+  select(bin, max_mld) %>%
+  rename(degree_bin = bin) %>% 
+  distinct()
+
+#join the google df with the max mld data from the floats
+#this depth will be used to determine the background DOC
+google2.df <- google.df %>% 
+  mutate(lat = round(Latitude, 1),
+         degree_bin = round(lat)) %>% 
+  left_join(., float_maxmld.df) %>% 
+  rename(Max_MLD = max_mld) %>% 
+  select(-lat) %>% 
+  select(Cruise:CampCN, Cast_Type, Z_MLD:SLA_std,EZD:Max_MLD, everything()) %>% 
+  ungroup() %>% 
+  select(Cruise:Cast_Type, degree_bin, Max_MLD,  Eddy:EZD_Morel, Z_MLD:N2, Niskin:N_N_sd, NO2:DMS, DNA_ID, Phytodetritus) %>% 
+  ungroup()
+
+```
+
+# Wrangle Data
+
+## Subset Data
+```{r warning = FALSE}
+#Filter CTD data 
+ctd.df <- google2.df %>% 
+  filter(!Cast_Type %in% c("Microlayer", "Flow-through")) %>% 
+  select(-Time) %>% 
+  mutate(
+    Time_Stamp = gsub("T", "_", Time_Stamp),
+    Time_Stamp = gsub(":", "-", Time_Stamp),
+    Date = as.Date(Time_Stamp),
+    datetime = ymd_hm(Time_Stamp, tz = "UTC"),
+    decimaldate = decimal_date(datetime)) %>% 
+  select(Cruise:Date, datetime, decimaldate, everything())
+
+#subset DNA_ID for later merge
+dna <- ctd.df %>% 
+  select(Cruise, Station, CampCN, Target_Z, DNA_ID) %>% 
+  drop_na(DNA_ID)
+
+#subset relevant biocast data 
+#Some measurements that were only taken on the biocasts, like NPP, phytoplankton stress markers, and some influx data, are relevant to the deep casts. 
+#we'll subset each of those measurements
+#then we'll average the observations by depth, by day so that there is one observation per day
+
+npp.df <- ctd.df %>% 
+  filter(!is.na(NPP)) %>%  
+  mutate(
+    NPP = (NPP/(mean(c(Density00,Density11), na.rm = T))) * 83333.33 ) %>% #convert NPP (mg C /m3 /d) to molar units, nmol C/L/d
+  select(Cruise, Station, Date, Target_Z, NPP) 
+  
+influx.df <- ctd.df %>% 
+  filter(!is.na(Pico_Influx)) %>% 
+  select(Cruise, Station, Date, Target_Z, contains("Influx")) %>% 
+  group_by(Cruise, Station, Date, Target_Z) %>% 
+  summarise_at(vars(Pro_Influx:Nano_Influx), mean, na.rm = T)
+
+stress.df <- ctd.df %>% 
+  filter(!is.na(TPhyto)) %>% 
+  select(Cruise, Station, Date, Target_Z, TPhyto:Pico_ROS) %>% 
+  group_by(Cruise, Station, Date, Target_Z) %>% 
+  summarise_at(vars(TPhyto:Pico_ROS), mean, na.rm = T)
+
+phytodetritus.df <- ctd.df %>% 
+  filter(!is.na(Phytodetritus)) %>% 
+  select(Cruise, Station, Date, Target_Z, Phytodetritus) %>% 
+  group_by(Cruise, Station, Date, Target_Z) %>% 
+  summarise_at(vars(Phytodetritus), mean, na.rm = T)
+```
+
+## Recombine Data and Unit Conversions
+
+```{r message = FALSE}
+#merge the biocast dataframes with the ctd.df 
+#we'll first drop the variables from the ctd.df then merge the dataframes, filling the deep cast rows with the biocast data
+ctd_fill.df <- ctd.df %>% 
+  select(-NPP, -contains("Influx"),-(TPhyto:Pico_ROS), -Phytodetritus) %>% 
+  left_join(., npp.df) %>% 
+  left_join(., influx.df) %>% 
+  left_join(., stress.df) %>% 
+  left_join(., phytodetritus.df) %>% 
+#fill data and add conversions 
+#there is one entry of MLD and NPP data per cast, but like other metadata, it applies to the whole cast, so we will fill the empty rows with the same observation
+#we'll also convert POC/PON from ug/L to umol/L by dividing by 12 and 14 respectively
+#we'll convert bp from pmol Leu/L/h to nmol C/L/d by multiplying *3:
+#1 mol Leu = 10^12 pmol Leu, 1500 g Leu = 1 mol C, 12 g C = 1 mol C, 10^9 nmol C = 1 mol C, 24 h = 1 d
+#BactAbund is in E8 cells per l so we will convert back to cells per l
+#add DON as derived variable
+  group_by(CampCN) %>% 
+  fill(., Z_MLD:N2, .direction = c("updown")) %>% 
+  fill(., NPP) %>% 
+  mutate(
+    POC_uM = POC/12,
+    PON_uM = PON/14,
+    BactProd_C = BactProd * 3,
+    BactProd_C_sd = BactProd_sd * 3,
+    BactAbund = BactAbund * 10^8,
+    BactAbund_sd = BactAbund_sd * 10^8,
+    deriv_DON =  TDN - (N_N + NH4)
+  ) %>% 
+  ungroup() %>% 
+  select(Cruise:Type, Date:deriv_DON)
+```
+
+# Collapse Profiles 
+
+```{r}
+#Split data frame into a list based on campaign cast no 
+cast.list <- split(ctd_fill.df, ctd_fill.df$CampCN)
+
+#create a function to collapse the entire cast list 
+#the end product: unique column values for the same depth but sampled from different niskins are combined into a single row. 
+#what is happening here is:
+#for every depth that has more than one niskin associated with it, a mean is reported for each variable for that depth (disregarding NA values)
+#this works for this dataset as there are never two measurements of a variable taken from the same depth of the same cast, but from different bottles
+collapse.func <- function(casper){
+  meta.df <- casper %>% 
+    select(Cruise:N2, Target_Z,-Niskin, -DNA_ID) %>% 
+    unique(.)
+  data.df <- casper %>% 
+    select(-c(Cruise:N2), -contains("QF"), -DNA_ID) %>% 
+    aggregate(., by = list(.$Target_Z), mean, na.rm = T)
+  collapsedcast.df <- meta.df %>% 
+    left_join(., data.df, by = "Target_Z")
+}
+
+#run the cruise list through the function 
+collapsed.list <- lapply(cast.list, collapse.func)
+
+#convert the list into a dataframe 
+collapsed.df <- data.frame(rbindlist(collapsed.list)) %>% 
+  select(-Group.1)
+```
+
+# Interpolate Data for Max MLD (and for nominal depths not sampled)
+
+```{r warning = FALSE, message = FALSE}
+#extract deep casts from the collapsed profiles data frame 
+add_maxMLD.df <- collapsed.df[which(!collapsed.df$Cast_Type %in% c("Biology", "Shallow")) , ] 
+
+#split the df by CampCN  
+add_maxMLD.list <- split(add_maxMLD.df, add_maxMLD.df$CampCN)
+
+#create a function to add an empty row to each cast, then add the max MLD to the Target Z column 
+add.func <- function(morty){
+  morty[nrow(morty) + 1,] <- NA
+  morty$Target_Z[is.na(morty$Target_Z)] <- max(morty$Max_MLD, na.rm = T)
+  rick <- morty %>% 
+    fill(., Cruise:N2, .direction = c("updown")) %>% 
+    fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+  
+  rick[nrow(rick) + 1,] <- NA
+  rick$Target_Z[is.na(rick$Target_Z)] <- max(rick$Z_MLD, na.rm = T)
+   schwifty <- rick %>% 
+     fill(., Cruise:N2, .direction = c("updown")) %>%
+     fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+  schwifty[nrow(schwifty) + 1,] <- NA
+  
+  schwifty$Target_Z[is.na(schwifty$Target_Z)] <- 0
+   summer <- schwifty %>% 
+     fill(., Cruise:N2, .direction = c("updown")) %>%
+     fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+   
+  summer[nrow(summer) + 1,] <- NA
+  summer$Target_Z[is.na(summer$Target_Z)] <- 5
+  a <- summer %>% 
+    fill(., Cruise:N2, .direction = c("updown")) %>%
+    fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+  
+  a[nrow(a) + 1,] <- NA
+  a$Target_Z[is.na(a$Target_Z)] <- 10
+  b <- a %>% 
+   fill(., Cruise:N2, .direction = c("updown")) %>%
+    fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+  
+  b[nrow(b) + 1,] <- NA
+  b$Target_Z[is.na(b$Target_Z)] <- 25
+  c <- b  %>% 
+    fill(., Cruise:N2, .direction = c("updown")) %>%
+    fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+  
+  c[nrow(c) + 1,] <- NA
+  c$Target_Z[is.na(c$Target_Z)] <- 400
+  d <- c %>% 
+   fill(., Cruise:N2, .direction = c("updown")) %>%
+    fill(., NPP) %>% 
+    arrange(CampCN, Target_Z)
+  
+}
+
+#apply function to list 
+added_maxMLD.list <- lapply(add_maxMLD.list, add.func)
+
+
+#save the list as a data frame 
+added_maxMLD.df <- plyr::ldply(added_maxMLD.list, data.frame) %>% 
+  group_by(CampCN) %>% 
+  distinct(., Target_Z, .keep_all = T) %>% 
+  select(-.id) %>% 
+  ungroup() %>% 
+  mutate(Max_MLD = ifelse(Z_MLD > Max_MLD, Z_MLD, Max_MLD)) %>% 
+  filter(!Target_Z == "-Inf")
+
+
+#extract deep casts from the collapsed profiles data frame 
+to_interpolate.df <- added_maxMLD.df
+
+#split the data frame into lists based on the campaign cast number
+to_interpolate.list <- split(to_interpolate.df, to_interpolate.df$CampCN)
+
+#create a function that will linearly interpolate each VOI according to the depth intervals of the casts 
+interpolate.func <- function(copper) {
+to_interpolate.df <- copper %>% 
+  select(Target_Z:ncol(.)) %>% 
+  zoo(., order.by = .$Target_Z) 
+interp_Temp <- as.numeric(na.approx(to_interpolate.df$Temperature, na.rm = F))
+interp_Sal <- as.numeric(na.approx(to_interpolate.df$Sal11, na.rm = F))
+interp_POC_uM <- as.numeric(na.approx(to_interpolate.df$POC_uM, na.rm = F))
+interp_PON_uM <- as.numeric(na.approx(to_interpolate.df$PON_uM, na.rm = F))
+interp_DOC <- as.numeric(na.approx(to_interpolate.df$DOC, na.rm = F))
+interp_DON <- as.numeric(na.approx(to_interpolate.df$deriv_DON, na.rm = F))
+interp_TDN <- as.numeric(na.approx(to_interpolate.df$TDN, na.rm = F))
+interp_NH4 <- as.numeric(na.approx(to_interpolate.df$NH4, na.rm = F))
+interp_PO4 <- as.numeric(na.approx(to_interpolate.df$PO4, na.rm = F))
+interp_SiO4 <- as.numeric(na.approx(to_interpolate.df$SiO4, na.rm = F))
+interp_N_N <- as.numeric(na.approx(to_interpolate.df$N_N, na.rm = F))
+interp_NO2 <- as.numeric(na.approx(to_interpolate.df$NO2, na.rm = F))
+interp_O2_Winkler <- as.numeric(na.approx(to_interpolate.df$O2_Winkler, na.rm = F))
+interp_Chl_a_Fluor <- as.numeric(na.approx(to_interpolate.df$Chl_a_Fluor, na.rm = F))
+interp_Phaeo_Fluor <- as.numeric(na.approx(to_interpolate.df$Phaeo_Fluor, na.rm = F))
+interp_TChl_a <- as.numeric(na.approx(to_interpolate.df$TChl_a, na.rm = F))
+interp_DV_Chl_a <- as.numeric(na.approx(to_interpolate.df$DV_Chl_a, na.rm = F))
+interp_Zea <- as.numeric(na.approx(to_interpolate.df$Zea, na.rm = F))
+interp_MV_Chl_b <- as.numeric(na.approx(to_interpolate.df$MV_Chl_b, na.rm = F))
+interp_Hex_fuco <- as.numeric(na.approx(to_interpolate.df$Hex_fuco, na.rm = F))
+interp_Fuco <- as.numeric(na.approx(to_interpolate.df$Fuco, na.rm = F))
+interp_Perid <- as.numeric(na.approx(to_interpolate.df$Perid, na.rm = F))
+interp_BactProd_C <- as.numeric(na.approx(to_interpolate.df$BactProd_C, na.rm = F))
+interp_BactAbund <- as.numeric(na.approx(to_interpolate.df$BactAbund, na.rm = F))
+interp_Pro_Influx <- as.numeric(na.approx(to_interpolate.df$Pro_Influx, na.rm = F))
+interp_Syn_Influx <- as.numeric(na.approx(to_interpolate.df$Syn_Influx, na.rm = F))
+interp_Pico_Influx <- as.numeric(na.approx(to_interpolate.df$Pico_Influx, na.rm = F))
+interp_Nano_Influx <- as.numeric(na.approx(to_interpolate.df$Nano_Influx, na.rm = F))
+interp_phytodetritus <- as.numeric(na.approx(to_interpolate.df$Phytodetritus, na.rm = F))
+Target_Z <- to_interpolate.df$Target_Z
+interpolations.df <- data.frame(Target_Z, interp_Temp, interp_Sal, 
+                                interp_POC_uM, interp_PON_uM, 
+                                interp_DOC,interp_TDN, interp_DON,
+                                interp_NH4,interp_PO4, interp_SiO4,
+                                interp_N_N, interp_NO2,interp_O2_Winkler,
+                                interp_Chl_a_Fluor, interp_Phaeo_Fluor, 
+                                interp_TChl_a, interp_DV_Chl_a, 
+                                interp_Zea, interp_Hex_fuco, interp_MV_Chl_b,
+                                interp_Fuco, interp_Perid, 
+                                interp_BactProd_C, interp_BactAbund,
+                                interp_Pro_Influx, interp_Syn_Influx,
+                                interp_Pico_Influx , interp_Nano_Influx, interp_phytodetritus)
+}
+
+#apply function to list 
+interpolations.list <- lapply(to_interpolate.list, interpolate.func)
+
+#save the list as a data frame 
+interpolations.df <- plyr::ldply(interpolations.list, data.frame) %>% 
+  rename(., CampCN = .id) %>% 
+  group_by(CampCN) %>% 
+  fill(interp_Temp:interp_phytodetritus, .direction = "up") %>% 
+  ungroup()
+
+#combine the interpolated and non-interpolated data frames
+interpolations.df$CampCN <- as.numeric(interpolations.df$CampCN)
+interpolated.df <- left_join(to_interpolate.df, interpolations.df) 
+
+```
+
+# Identify Chlorophyll and Phytoplankton Maximums
+
+```{r}
+#chlorophyll max
+chl_max.df <- interpolated.df %>% 
+  select(Cruise, degree_bin,Station, CampCN,  Target_Z, Fluorescence) %>% 
+  group_by(Cruise, Station, CampCN) %>% 
+  filter(!is.na(Fluorescence)) %>%
+  mutate(Fluorescence = Fluorescence * 100,
+         Fluorescence = ifelse(Fluorescence < 0, 0, Fluorescence),
+         max_fl = max(Fluorescence),
+         z_max_fl = Target_Z[which.max(Fluorescence)]) %>% 
+  filter(Target_Z >= z_max_fl) %>% 
+  mutate(min_fl = min(Fluorescence),
+         z_min_fl = Target_Z[which.min(Fluorescence)],
+         cor_max_fl = max_fl - min_fl,
+         cor_fl = Fluorescence - min_fl) %>% 
+  filter(between(Target_Z, z_max_fl, z_min_fl)) %>% 
+  select(Cruise, degree_bin,Station, CampCN, Target_Z, z_max_fl) %>% 
+  rename(Chl_max = z_max_fl) %>% 
+  distinct() %>% 
+  ungroup()
+
+
+#phytoplankton abundance max
+phyto_max.df <- interpolated.df %>% 
+  select(Cruise, degree_bin,Station, CampCN,  Target_Z, interp_Pro_Influx, interp_Syn_Influx, interp_Nano_Influx, interp_Pico_Influx) %>% 
+  group_by(Cruise, Station, CampCN) %>% 
+  filter(!is.na(interp_Pro_Influx)) %>%
+  mutate(phyto = interp_Pro_Influx + interp_Syn_Influx + interp_Pico_Influx + interp_Nano_Influx,
+         max_phyto = max(phyto),
+         Phyto_max = Target_Z[which.max(phyto)]) %>% 
+  select(Cruise, degree_bin,Station, CampCN, Phyto_max) %>% 
+  distinct() %>% 
+  ungroup()
+```
+
+# Combine Datasets 
+
+```{r}
+processed_bf <- interpolated.df %>% 
+  mutate(Subregion = gsub("Gulf_Stream_Sargasso", "GS/Sargasso", Subregion)) %>% 
+  mutate(Season = Cruise, 
+         Season = gsub("AT32", "Late Autumn", Season),
+         Season = gsub("AT34", "Late Spring", Season),
+         Season = gsub("AT38", "Early Autumn", Season),
+         Season = gsub("AT39-6", "Early Spring", Season),
+         Cruise = gsub("AT39-6", "AT39", Cruise)) %>% 
+  select(Cruise, Subregion, Season, Station, everything()) %>% 
+  left_join(., chl_max.df) %>% 
+  left_join(., phyto_max.df) %>% 
+  left_join(., dna) %>% 
+  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
+  distinct() %>% 
+  group_by(CampCN) %>%
+  fill(Chl_max, .direction = "updown") %>% 
+  ungroup()
+
+processed_bf$Cruise <- factor(processed_bf$Cruise, levels = levels)
+processed_bf$Season <- factor(processed_bf$Season, levels = levels)
+processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
+
+saveRDS(processed_bf,"~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
+
+```
+
+
+

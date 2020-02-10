@@ -1,0 +1,627 @@
+---
+title: "Export_MS"
+author: "Nicholas Baetge"
+date: "1/30/2020"
+output: html_document
+---
+
+# Intro
+
+This document is primarily used to plot data generated from the analyses conducted for the NAAMES DOC export manuscript. 
+
+```{r include=FALSE}
+library(tidyverse) 
+library(rmarkdown)
+library(knitr)
+library(data.table) #these two libraries allow for data manipulation operations like join dataframes
+library(zoo) #this package allows for the interpolation function
+library(oce) #allows for processing and visualization of oceanographic data. Here, it is used for running integrations.
+library(lattice)
+library(scales)
+library(gridExtra)
+library(grid)
+#for time
+library(lubridate)
+#### bar plot
+library(broom)
+#stat tests
+library(lmtest)
+library(lmodel2)
+#image conversion
+library(magick)
+library(pdftools)
+#rmarkdown tables
+library(stargazer)
+library(pander)
+#for mapping
+library(marmap)
+library(ggrepel)
+library(ocedata)
+library(ggmap)
+
+```
+
+
+```{r include = FALSE}
+custom_theme <- function() {
+  theme_test(base_size = 40) %+replace%
+    theme(legend.position = "top",
+          legend.title = element_blank(),
+          legend.spacing.x = unit(0.5,"cm"),
+          legend.background = element_rect(fill = "transparent",colour = NA),
+          legend.key = element_rect(fill = "transparent",colour = NA),
+          panel.background = element_rect(fill = "transparent",colour = NA),
+          plot.background = element_rect(fill = "transparent",colour = NA)) 
+}
+
+custom.colors <- c("AT39" = "#377EB8", "AT34" = "#4DAF4A", "AT38" = "#E41A1C", "AT32" = "#FF7F00", "Temperate" = "#A6CEE3", "Subpolar" = "#377EB8", "Subtropical" = "#FB9A99", "GS/Sargasso" = "#E41A1C", "Early Spring" = "#377EB8", "Late Spring" = "#4DAF4A","Early Autumn" = "#E41A1C", "Summer" = "#E41A1C", "Late Autumn" = "#FF7F00", "Gv2_2019" = "#377EB8", "WOA18_MN" = "#4DAF4A", "WOA18_AN" = "#E41A1C")
+
+levels = c("GS/Sargasso", "Subtropical", "Temperate", "Subpolar",  "AT39-6", "AT34", "AT38", "AT32","South", "North", "Early Spring", "Late Spring","Early Autumn",  "Summer", "Late Autumn", "Gv2_2019", "WOA18_MN", "WOA18_AN","Nov", "Nov sd", "Dec", "Dec sd", "Jan", "Jan sd", "Feb", "Feb sd", "Mar", "Mar sd", "Apr", "Apr sd",  "Cruise", "ARGO")
+
+bar.colors <- c("100 m" = "white", "CM" = "#4DAF4A",  "PAM" = "#377EB8")
+
+```
+
+# Import and Wrangle Data
+
+```{r message = F}
+
+processed_bf <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
+
+processed_export <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds") 
+
+processed_export$Season <- factor(processed_export$Season, levels = levels)
+
+processed_export.spr <- processed_export %>% 
+  filter(Season %in% c("Late Spring")) 
+ 
+
+processed_export.aut <- processed_export %>% 
+  filter(Season %in% c("Early Autumn"))  
+  
+
+```
+
+## Data for Regressions
+
+We'll use station/day averages for any model regressions we conduct. 
+
+```{r}
+regression.means <- processed_export %>% 
+  select(Cruise:Subregion, NCP_mol_100, NCP_mol_cm, NCP_mol_phy, int_delta_DOC_100, int_delta_DOC_100_maxmld,int_delta_DOC_phy, int_delta_DOC_cm, doc_ncp_100:si_ncp_100, int_Pro_cm_vol:int_Nano_phy_vol) %>%
+  distinct() %>% 
+  group_by(Cruise, Station) %>% 
+  mutate_at(vars(NCP_mol_100:int_Nano_phy_vol), mean, na.rm = T) %>% 
+  distinct() %>% 
+  ungroup()
+regression.means[ is.na(regression.means) ] <- NA
+
+
+regression.means.spr <- regression.means %>% 
+  filter(Season == "Late Spring")
+
+regression.means.aut <- regression.means %>% 
+  filter(Season == "Early Autumn")
+```
+
+# Tables
+
+```{r include = FALSE}
+table.integrations <-  processed_export %>% 
+  select(Season, Station, ave_lat, ave_lon,  NCP_mol_100, NCP_mol_cm, NCP_mol_phy, int_delta_DOC_100, int_delta_DOC_cm, int_delta_DOC_phy, doc_ncp_100, doc_ncp_cm, doc_ncp_phy) %>% 
+ arrange(Season, ave_lat) %>% 
+  distinct() %>% 
+  mutate_at(vars(NCP_mol_100:doc_ncp_phy),round,2) %>% 
+  rename(NCP_100 = NCP_mol_100,
+         DOC_NCP_100 = doc_ncp_100,
+         Delta_DOC_100 = int_delta_DOC_100,
+         NCP_CM = NCP_mol_cm,
+         DOC_NCP_CM = doc_ncp_cm,
+         Delta_DOC_CM = int_delta_DOC_cm,
+         NCP_PM = NCP_mol_phy,
+         DOC_NCP_PM = doc_ncp_phy,
+         Delta_DOC_PM = int_delta_DOC_phy,
+        )
+
+
+table.spr <-  processed_export.spr %>% 
+  select(Station, ave_lat, ave_lon, degree_bin, Subregion, ave_date,  Max_MLD, ave_chlmax:sd_pmax, redis_N_vol, redis_DOC_vol, redis_Si_vol, int_delta_N_100, NCP_mol_100, doc_ncp_100, int_delta_DOC_100, int_delta_Si_100, si_n_100, si_ncp_100) %>% 
+ arrange(degree_bin) %>% 
+  distinct() %>% 
+  mutate_at(vars(redis_N_vol:si_ncp_100),round,2) %>% 
+  rename(Bin = degree_bin, 
+         Mixed_N = redis_N_vol,
+         Mixed_DOC = redis_DOC_vol,
+         Mixed_Si = redis_Si_vol,
+         Delta_N = int_delta_N_100,
+         NCP = NCP_mol_100,
+         DOC_NCP = doc_ncp_100,
+         Delta_DOC = int_delta_DOC_100,
+         Delta_Si = int_delta_Si_100,
+         Si_N = si_n_100,
+         Si_NCP = si_ncp_100)
+  
+
+table.aut <-  processed_export.aut %>% 
+  select(Station, ave_lat, ave_lon, degree_bin, Subregion, ave_date,  Max_MLD, ave_chlmax:sd_pmax, redis_N_vol, redis_DOC_vol, redis_Si_vol, int_delta_N_100, NCP_mol_100, doc_ncp_100, int_delta_DOC_100, int_delta_DOC_100_maxmld, int_delta_Si_100, si_n_100, si_ncp_100) %>% 
+  arrange(degree_bin) %>% 
+  distinct() %>% 
+  mutate_at(vars(redis_N_vol:si_ncp_100),round,2) %>% 
+  rename(Bin = degree_bin, 
+         Mixed_N = redis_N_vol,
+         Mixed_DOC = redis_DOC_vol,
+         Mixed_Si = redis_Si_vol,
+         Delta_N = int_delta_N_100,
+         NCP = NCP_mol_100,
+         DOC_NCP = doc_ncp_100,
+         Delta_DOC = int_delta_DOC_100,
+         Delta_DOC_mz = int_delta_DOC_100_maxmld,
+         Delta_Si = int_delta_Si_100,
+         Si_N = si_n_100,
+         Si_NCP = si_ncp_100)
+
+```
+## Table 1. ARGO Observations
+
+See ARGO.Rmd document
+
+## Table 2. Early Autumn
+
+```{r echo = FALSE, results = 'asis'}
+kable(table.aut, caption = "Early Autumn")
+```
+
+
+## Table 3. Late Spring
+```{r echo = FALSE, results = 'asis'}
+kable(table.spr, caption = "Late Spring")
+```
+
+
+## Supplemental Table 1. Integrations
+
+```{r echo = FALSE, results = 'asis'}
+kable(table.integrations, caption = "Integration Comparisons")
+```
+
+
+## Supplemental Table 2. ∆DOC:NCP v Phytoplankton
+
+```{r message = FALSE}
+si_t2_data <- regression.means.aut %>% 
+  select(Subregion, doc_ncp_cm, doc_ncp_phy, int_Syn_cm_vol, int_Syn_phy_vol, int_Pico_cm_vol, int_Pico_phy_vol, int_Nano_cm_vol, int_Nano_phy_vol  ) %>% 
+  distinct()
+lmodel2(doc_ncp_cm ~ int_Syn_cm_vol, data = si_t2_data, nperm = 99)
+```
+
+```{r message = FALSE}
+lmodel2(doc_ncp_phy ~ int_Syn_phy_vol, data = si_t2_data, nperm = 99) 
+```
+
+
+```{r message = FALSE}
+lmodel2(doc_ncp_cm ~ int_Pico_cm_vol, data = si_t2_data, nperm = 99)
+```
+
+
+```{r message = FALSE}
+lmodel2(doc_ncp_phy ~ int_Pico_phy_vol, data = si_t2_data, nperm = 99)
+
+```
+
+```{r message = FALSE}
+lmodel2(doc_ncp_cm ~ int_Nano_cm_vol, data = si_t2_data, nperm = 99)
+```
+
+
+```{r message = FALSE}
+lmodel2(doc_ncp_phy ~ int_Nano_phy_vol, data = si_t2_data, nperm = 99)
+```
+
+
+# Figure 1. Cruise Map & Floats
+
+See Cruise_Map.Rmd and ARGO.Rmd  documents
+
+# Figure 2. MLD Comparison
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 10, fig.width = 16, fig.align = "center", warning = FALSE}
+naames_mld <- processed_bf %>% 
+  select(Season, Station, CampCN, degree_bin, Max_MLD, Z_MLD) %>%
+  group_by(Season, Station) %>% 
+  mutate(mean_mld = mean(Z_MLD),
+         sd_mld = sd(Z_MLD)) %>% 
+  ungroup() %>% 
+  select(Season, degree_bin, Max_MLD, mean_mld, sd_mld) %>% 
+  distinct()
+
+naames_mld.plot <- naames_mld %>% 
+  ggplot(aes(x = degree_bin)) +
+  geom_errorbar(aes(x = degree_bin, ymin = mean_mld - sd_mld, ymax = mean_mld + sd_mld)) +
+  geom_point(aes(y = Max_MLD), size = 6, shape = 4, color = "black", stroke = 1, alpha = 0.7) +
+  geom_point(aes(y = mean_mld, fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) +
+  scale_y_reverse(expand = c(0,0)) +
+  scale_colour_manual(values = custom.colors) +
+  scale_fill_manual(values = custom.colors) +
+  custom_theme() +
+  labs(x = "", y = expression(italic("Maximum Mixed Layer, m")))
+
+naames_mld.plot
+```
+```{r include = FALSE}
+ggsave("f2.jpg", naames_mld.plot, device = "jpg",  width = 16, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+
+# Figure 3. Early Autumn Profiles 
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 10, fig.width = 14, fig.align = "center", warning = FALSE}
+
+profiles.df <- processed_export.aut %>% 
+  filter(Target_Z %in% c(0,5,10,25,50,75,100,150,200,300,400,500),
+         Station == 5) 
+
+n <-  profiles.df %>% 
+  ggplot(aes(x = Target_Z, y = ave_N)) +
+   geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_N), yend = max(ave_N), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
+  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = 500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(x = 100, xend = 100, y = min(ave_N), yend = max(ave_N), group = Station), colour = "black", linetype = 3, size = 1.5) +
+  geom_line(aes(colour = Season), size = 0.7) +
+  geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 
+  labs(x = expression(paste(italic("Depth, m"))), y = expression(italic(paste("NO"[3],", µmol N L"^"-1"))), colour = "") +
+   scale_x_reverse(breaks = pretty_breaks(), expand = c(0,0)) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_colour_manual(values = custom.colors) +
+  scale_fill_manual(values = custom.colors) +
+  guides(colour = F) +
+  guides(fill = F) +
+  custom_theme()
+  
+
+doc <-  profiles.df %>% 
+  ggplot(aes(x = Target_Z, y = ave_DOC)) +
+  geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_DOC), yend = max(ave_DOC), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
+  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = 500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(x = 100, xend = 100, y = min(ave_DOC), yend = max(ave_DOC), group = Station), colour = "black", linetype = 3, size = 1.5) +
+  geom_line(aes(colour = Season), size = 0.7) +
+  geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 
+  labs(x = expression(paste("")), y = expression(paste("DOC, µmol C L"^"-1")), colour = "") +
+  scale_x_reverse(breaks = pretty_breaks(), expand = c(0,0)) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_colour_manual(values = custom.colors) +
+  scale_fill_manual(values = custom.colors) +
+  guides(colour = F) +
+  guides(fill = F) +
+  custom_theme()
+
+lay <- rbind(c(1,1,2,2))
+
+a <- arrangeGrob(n, top = textGrob("a", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"), gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+b <- arrangeGrob(doc, top = textGrob("b", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"), gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+combined_r.plot <- grid.arrange(a,b, layout_matrix = lay )  
+```
+
+```{r include = FALSE}
+ggsave("f3.jpg", combined_r.plot, device = "jpg",  width = 16, height = 12, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+# Figure 4. ∆DOC, NCP, DOC:NCP Profiles
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 10, fig.width = 22, fig.align = "center", warning = FALSE}
+f3a <-  profiles.df %>% 
+  filter(Target_Z < 150) %>% 
+  ggplot(aes(x = Target_Z, y = NCP_umol, group = Station)) +
+   geom_segment(aes(y = min(NCP_umol), yend = max(NCP_umol), x = ave_chlmax, xend = ave_chlmax, group = Station),colour = "#4DAF4A", linetype = 3, size = 3 , alpha = 0.7) +
+  geom_segment(aes(y = min(NCP_umol), yend = max(NCP_umol), x = ave_pmax, xend = ave_pmax, group = Station),colour = "#377EB8", linetype = 3, size = 3, alpha = 0.7 ) +
+  geom_line(aes(colour = Season), size = 0.7) +
+  geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 
+  labs(x = expression(italic(paste("Depth, m"))), y = expression(italic(paste("NCP, µmol C"," ", "L"^"-1"))), colour = "") +
+  scale_x_reverse(breaks = pretty_breaks(), expand = c(0,0.1)) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_colour_manual(values = custom.colors) +
+  scale_fill_manual(values = custom.colors) +
+  guides(colour = F) +
+  guides(fill = F) +
+  custom_theme() 
+ 
+
+f3b <-   profiles.df %>% 
+  filter(Target_Z < 150) %>% 
+  ggplot(aes(x = Target_Z, y = delta_DOC, group = Station)) +
+  geom_segment(aes(y = min(delta_DOC), yend = max(delta_DOC), x = ave_chlmax, xend = ave_chlmax, group = Station), colour = "#4DAF4A", linetype = 3, size = 3, alpha = 0.7 ) +
+  geom_segment(aes(y = min(delta_DOC), yend = max(delta_DOC), x = ave_pmax, xend = ave_pmax, group = Station), colour = "#377EB8", linetype = 3, size = 3, alpha = 0.7 ) +
+  geom_line(aes(colour = Season), size = 0.7) +
+  geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 
+  labs(x = expression(paste(italic(""))), y = expression(italic(paste("∆DOC, µmol C"," ", "L"^"-1"))), colour = "") +
+  scale_x_reverse(breaks = pretty_breaks(), expand = c(0,0.1)) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_colour_manual(values = custom.colors) +
+  scale_fill_manual(values = custom.colors) +
+  guides(colour = F) +
+  guides(fill = F) +
+  custom_theme() 
+   
+
+f3c <- profiles.df %>% 
+  filter(Target_Z < 150) %>% 
+  ggplot(aes(x = Target_Z,  y = doc_ncp, group = Station)) +
+  geom_segment(aes(y = min(doc_ncp), yend = max(doc_ncp), x = ave_chlmax, xend = ave_chlmax, group = Station),colour = "#4DAF4A", linetype = 3, size = 3, alpha = 0.7 ) +
+  geom_segment(aes(y = min(doc_ncp), yend = max(doc_ncp), x = ave_pmax, xend = ave_pmax, group = Station),colour = "#377EB8", linetype = 3, size = 3, alpha = 0.7 ) + 
+  geom_line(aes(colour = Season), size = 0.7) +
+  geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 
+  labs(x = expression(italic(paste(""))), y = expression(italic(paste("∆DOC:NCP"))), colour = "") +
+  scale_x_reverse(breaks = pretty_breaks(), expand = c(0,0)) +
+  coord_flip() +
+  scale_y_continuous(expand = c(0,0),) +
+  scale_colour_manual(values = custom.colors) +
+  scale_fill_manual(values = custom.colors) +
+  guides(colour = F) +
+  guides(fill = F) +
+  custom_theme() 
+  
+
+lay <- rbind(c(1,2,3))
+
+a <- arrangeGrob(f3a, top = textGrob("a", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"), gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+b <- arrangeGrob(f3b, top = textGrob("b", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"), gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+c <- arrangeGrob(f3c, top = textGrob("b", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"), gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+combined_r.plot <- grid.arrange(a,b, c, layout_matrix = lay )  
+
+```
+```{r include = FALSE}
+ggsave("f4.jpg", combined_r.plot, device = "jpg",  width = 22, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+# Figure 5. DOC:NCP Boxplots
+
+```{r}
+f4_data <- regression.means %>% 
+  select(Season, doc_ncp_100) %>% 
+  distinct()
+f4_test <- t.test(doc_ncp_100 ~ Season, data = f4_data)
+```
+
+```{r echo = FALSE}
+pander(f4_test)
+```
+
+```{r fig.align="center", fig.height=8, fig.width=8, echo = FALSE, message = FALSE, warning=FALSE}
+f4.plot <- ggplot(f4_data,aes(Season, doc_ncp_100)) +
+  geom_boxplot(outlier.shape = NA, notch = F, color = "black", alpha = 0.4) +
+  geom_jitter(shape = 21, color = "black", alpha = 0.7, size = 6, stroke = 1, width = 0.25) +
+  stat_summary(fun.y = mean, geom = "point", shape = 23, size = 4, fill = "white", stroke = 2) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,0.4)) +
+  labs(y = expression(italic(paste("∆DOC:NCP"))), x = "") +
+  scale_fill_manual(values = custom.colors) +
+  guides(fill = F) +
+  custom_theme() +
+   theme(axis.text.x = element_text(angle = 15))
+
+f4.plot 
+```
+
+```{r include = FALSE}
+ggsave("f5.jpg", f4.plot, device = "jpg",  width = 7, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+# Figure 6. DOC:NCP v NCP and Export v NCP
+
+```{r, message = FALSE}
+f5_data <- regression.means.aut %>% 
+  select(Subregion,  doc_ncp_100, int_delta_DOC_100_maxmld,NCP_mol_100) %>% 
+  distinct()
+
+f5b <- lmodel2(int_delta_DOC_100_maxmld ~ NCP_mol_100, data = f5_data, nperm = 99)
+```
+
+```{r echo = FALSE}
+f5b
+```
+
+
+```{r fig.align="center", fig.height=11, fig.width=16, echo = FALSE, message=FALSE, warning=FALSE}
+
+f5a.plot  <- f5_data %>%  
+  ggplot() +
+  geom_point( aes(x = NCP_mol_100, y = doc_ncp_100, fill = Subregion), size = 8, shape = 21, alpha = 0.8, stroke=2) +
+  labs(x = expression(italic(paste("NCP, mol C"," ", "m"^"-2"))), y = expression(italic(paste("∆DOC:NCP")))) +
+  custom_theme() +
+  scale_fill_manual(values = c(custom.colors)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  guides(fill = F) 
+
+
+f5b.plot  <- f5_data  %>%
+  ggplot() +
+  geom_abline(intercept = f5b$regression.results[3,2],
+              slope = f5b$regression.results[3,3],colour = "black", linetype = 2, size = 1) +
+  geom_point( aes(x = NCP_mol_100, y = int_delta_DOC_100_maxmld, fill = Subregion),size = 8, shape = 21, alpha = 0.8, stroke = 2) +
+  labs(x = expression(italic(paste("NCP, mol C"," ", "m"^"-2"))), y = expression(italic(paste("Annual DOC Export, mol C"," ", "m"^"-2")))) +
+  custom_theme() +
+  scale_fill_manual(values = c(custom.colors)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  guides(fill = F)
+
+
+lay <- rbind(c(1,2))
+
+a <- arrangeGrob(f5a.plot, top = textGrob("a", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"), gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+b <- arrangeGrob(f5b.plot, top = textGrob("b", x = unit(0, "npc"), y   = unit(1, "npc"), just = c("left","top"),gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+combined_r.plot <- grid.arrange(a,b, layout_matrix = lay ) 
+```
+```{r include = FALSE}
+ggsave("f6.jpg", combined_r.plot, device = "jpg",  width = 18, height = 12, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+
+# Figure 7. Si:N
+
+```{r}
+f6_data <- regression.means.aut %>% 
+  select(Subregion, si_n_100, ave_lat, doc_ncp_100) %>% 
+  distinct()
+
+f6a <- lm(si_n_100 ~ ave_lat, data = f6_data)
+```
+
+```{r echo = F}
+summary(f6a)
+```
+
+
+```{r echo = F}
+bptest(f6a)
+```
+
+
+```{r message = FALSE}
+f6b <-  lmodel2(doc_ncp_100 ~ si_n_100, data = f6_data, nperm = 99)
+```
+
+```{r echo = FALSE}
+f6b
+```
+
+```{r fig.align="center", fig.height=8, fig.width=18, echo = FALSE, message=FALSE, warning=FALSE}
+
+int6a <- as.matrix(f6a$coefficients)
+
+f6a.plot <- f6_data %>%  
+  ggplot() +
+  geom_abline(intercept = int6a[1,1],
+              slope = int6a[2,1],colour = "black", linetype = 2, size = 1) + 
+  geom_point( aes(x = ave_lat, y = si_n_100, fill = Subregion),size = 8, shape = 21, alpha = 0.8, stroke = 2) +
+  labs(x = expression(italic(paste("Latitude, ˚N"))), y = expression(italic(paste("∆SiO"[4],":∆NO"[3])))) +
+  custom_theme() +
+  scale_fill_manual(values = c(custom.colors)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  guides(fill = F)
+
+f6b.plot <- f6_data %>%  
+  ggplot() +
+  geom_abline(intercept = f6b$regression.results[3,2],
+              slope = f6b$regression.results[3,3],colour = "black", linetype = 2, size = 1) +
+  geom_point( aes(x = si_n_100, y = doc_ncp_100, fill = Subregion),size = 8, shape = 21, alpha = 0.8, stroke = 2) +
+  labs(x = expression(italic(paste("∆SiO"[4],":∆NO"[3]))), y = expression(italic(paste("∆DOC:NCP")))) +
+  custom_theme() +
+  scale_fill_manual(values = c(custom.colors)) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  guides(fill = F)
+
+lay <- rbind(c(1,2))
+
+a <- arrangeGrob(f6a.plot, top = textGrob("a", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"),gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+b <- arrangeGrob(f6b.plot, top = textGrob("b", x = unit(0, "npc"), y = unit(1, "npc"), just = c("left","top"),gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+combined_r.plot <- grid.arrange(a,b, layout_matrix = lay ) 
+
+# ggsave("figure6_x.jpg", combined_r.plot, device = "jpg",  width = 20, height= 10, path = "~/Desktop/Export_MS/Submission2/Figs/") 
+# 
+# fig6.pdf <- image_read_pdf("~/Desktop/Export_MS/Submission2/Figs/Figure6.pdf")
+# fig6.jpg <- image_convert(fig6.pdf, "jpeg")
+# image_write(fig6.jpg, path = "~/Desktop/Export_MS/Submission2/Figs/Figure6.jpg", format = "jpeg")
+```
+
+```{r include = FALSE}
+ggsave("f7.jpg", combined_r.plot, device = "jpg",  width = 14, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+# Figure 8. ∆DOC:NCP v Pro
+
+
+```{r message = FALSE}
+f7_data <- regression.means %>% 
+  select(Subregion, doc_ncp_cm, int_Pro_cm_vol, doc_ncp_phy, int_Pro_phy_vol) %>% 
+  distinct()
+
+f7a <- lmodel2(doc_ncp_cm ~ int_Pro_cm_vol, data = f7_data , nperm = 99)
+```
+
+```{r echo = FALSE}
+f7a
+```
+
+```{r message = FALSE}
+f7b <- lmodel2(doc_ncp_phy ~ int_Pro_phy_vol, data = f7_data, nperm = 99)
+```
+
+```{r echo = FALSE}
+f7b
+```
+
+```{r fig.align="center", fig.height=10, fig.width=18, echo = FALSE, message=FALSE, warning=FALSE}
+f7a.plot <- f7_data %>%  
+  ggplot() +
+  geom_abline(intercept = f7a$regression.results[3,2],
+              slope = f7a$regression.results[3,3], colour = "black", linetype = 2, size = 1) +
+  geom_point( aes(x = int_Pro_cm_vol, y = doc_ncp_cm, fill = Subregion),size = 8, shape = 21, alpha = 0.8, stroke = 2) +
+  labs(x = expression(italic(paste("Prochlorococcus", ", cells L"^"-1"))), y = expression(italic(paste("∆DOC:NCP")))) +
+  custom_theme() +
+  scale_fill_manual(values = c(custom.colors)) +
+  scale_y_continuous(breaks = pretty_breaks(), limits = c(0.1,0.4)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  guides(fill = F) +
+  ggtitle("Integrated to CM") +
+  theme(plot.title = element_text(size = 30, face = "bold"),
+        axis.text.x = element_text(angle = 90)) 
+
+f7b.plot <- f7_data %>%  
+  ggplot() +
+  geom_abline(intercept = f7b$regression.results[3,2],
+              slope = f7b$regression.results[3,3],colour = "black", linetype = 2, size = 1) +
+  geom_point( aes(x = int_Pro_phy_vol, y = doc_ncp_phy, fill = Subregion),size = 8, shape = 21, alpha = 0.8, stroke = 2) +
+  labs(x = expression(italic(paste("Prochlorococcus", ", cells L"^"-1"))), y = expression(italic(paste("∆DOC:NCP")))) +
+  custom_theme() +
+  scale_fill_manual(values = c(custom.colors)) +
+  scale_y_continuous(breaks = pretty_breaks(), limits = c(0.1,0.4)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  guides(fill = F) +
+  ggtitle("Integrated to PAM") +
+    theme(plot.title = element_text(size = 30, face = "bold"),
+        axis.text.x = element_text(angle = 90)) 
+
+
+lay <- rbind(c(1,2))
+
+a <- arrangeGrob(f7a.plot, top = textGrob("a", x = unit(0, "npc"), y   = unit(1, "npc"), just = c("left","top"), gp=gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+b <- arrangeGrob(f7b.plot, top = textGrob("b", x = unit(0, "npc"), y   = unit(1, "npc"), just = c("left","top"),gp = gpar(col = "black", fontsize = 40, fontfamily = "Times Roman")))
+
+combined_r.plot <- grid.arrange(a,b, layout_matrix = lay ) 
+```
+
+```{r include = FALSE}
+ggsave("f8.jpg", combined_r.plot, device = "jpg",  width = 20, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
+```
+
+# Supplemental Figures. Profiles
+
+See ProcessedExport.rMD document
+
+```{r include = F}
+#converting pdf images from ppt to jpg
+
+fig.pdf <- image_read_pdf("~/Desktop/Export_MS/Submission2/fig_conversion/f7.pdf")
+fig.jpg <- image_convert(fig.pdf, "jpeg")
+image_write(fig.jpg, path = "~/Desktop/Export_MS/Submission2/fig_conversion/f7.jpg", format = "jpeg")
+
+
+```
+

@@ -1,47 +1,37 @@
----
-title: "Bottle File"
-author: "Nicholas Baetge"
-date: "2/6/2020"
-output: github_document
----
+Bottle File
+================
+Nicholas Baetge
+2/6/2020
 
 # Intro
 
-This document shows how the shared [NAAMES bottle file](https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=775961124) was processed prior to analysis. 
+This document shows how the shared [NAAMES bottle
+file](https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=775961124)
+was processed prior to analysis.
 
-- Profiles are first collapsed, such that there are one set of values for each depth sampled. 
-- Depths of 0 m, maximum MLD (estimated from NAAMES ARGO data), chl max, and phytoplankton abundance max are added to each profile. Data are interpolated for those depths (0 - 5 m are assumed to be the same).
-
-
-```{r include=FALSE}
-library(tidyverse)
-library(knitr)
-library(googledrive)
-library(googlesheets4)
-library(data.table)  
-#for interpolations
-library(zoo) 
-#for integrations
-library(oce) 
-library(scales)
-library(gridExtra)
-#for time
-library(lubridate)
-
-levels = c("GS/Sargasso", "Subtropical", "Temperate", "Subpolar",  "AT39-6", "AT34", "AT38", "AT32", "Early Spring", "Late Spring", "Early Autumn", "Late Autumn")
-
-```
-
+  - Profiles are first collapsed, such that there are one set of values
+    for each depth sampled.
+  - Depths of 0 m, maximum MLD (estimated from NAAMES ARGO data), chl
+    max, and phytoplankton abundance max are added to each profile. Data
+    are interpolated for those depths (0 - 5 m are assumed to be the
+    same).
 
 # Import Data
 
-```{r message = F, warning = FALSE}
+``` r
 google.df <- read_sheet("https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=1446474071", sheet = "Bottle File", skip = 1) %>% 
   #Station variable is read as numeric, so read_sheet turns station "1A" into an NA.
   #we'll replace it with a 0
   mutate(Station = ifelse(is.na(Station), 0, Station))
+```
 
+    ## Using an auto-discovered, cached token.
+    ## To suppress this message, modify your code or options to clearly consent to the use of a cached token.
+    ## See gargle's "Non-interactive auth" vignette for more details:
+    ## https://gargle.r-lib.org/articles/non-interactive-auth.html
+    ## The googlesheets4 package is using a cached token for nicholasbaetge@gmail.com.
 
+``` r
 #load the float-station matchup with the maximum MLD data
 float_maxmld.df <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/max_mld.rds") %>% 
   select(bin, max_mld) %>%
@@ -60,13 +50,13 @@ google2.df <- google.df %>%
   ungroup() %>% 
   select(Cruise:Cast_Type, degree_bin, Max_MLD,  Eddy:EZD_Morel, Z_MLD:N2, Niskin:N_N_sd, NO2:DMS, DNA_ID, Phytodetritus) %>% 
   ungroup()
-
 ```
 
 # Wrangle Data
 
 ## Subset Data
-```{r warning = FALSE}
+
+``` r
 #Filter CTD data 
 ctd.df <- google2.df %>% 
   filter(!Cast_Type %in% c("Microlayer", "Flow-through")) %>% 
@@ -116,7 +106,7 @@ phytodetritus.df <- ctd.df %>%
 
 ## Recombine Data and Unit Conversions
 
-```{r message = FALSE}
+``` r
 #merge the biocast dataframes with the ctd.df 
 #we'll first drop the variables from the ctd.df then merge the dataframes, filling the deep cast rows with the biocast data
 ctd_fill.df <- ctd.df %>% 
@@ -148,9 +138,9 @@ ctd_fill.df <- ctd.df %>%
   select(Cruise:Type, Date:deriv_DON)
 ```
 
-# Collapse Profiles 
+# Collapse Profiles
 
-```{r}
+``` r
 #Split data frame into a list based on campaign cast no 
 cast.list <- split(ctd_fill.df, ctd_fill.df$CampCN)
 
@@ -180,7 +170,7 @@ collapsed.df <- data.frame(rbindlist(collapsed.list)) %>%
 
 # Interpolate Data for Max MLD (and for nominal depths not sampled)
 
-```{r warning = FALSE, message = FALSE}
+``` r
 #extract deep casts from the collapsed profiles data frame 
 add_maxMLD.df <- collapsed.df[which(!collapsed.df$Cast_Type %in% c("Biology", "Shallow")) , ] 
 
@@ -322,12 +312,11 @@ interpolations.df <- plyr::ldply(interpolations.list, data.frame) %>%
 #combine the interpolated and non-interpolated data frames
 interpolations.df$CampCN <- as.numeric(interpolations.df$CampCN)
 interpolated.df <- left_join(to_interpolate.df, interpolations.df) 
-
 ```
 
 # Identify Chlorophyll and Phytoplankton Maximums
 
-```{r}
+``` r
 #chlorophyll max
 chl_max.df <- interpolated.df %>% 
   select(Cruise, degree_bin,Station, CampCN,  Target_Z, Fluorescence) %>% 
@@ -362,9 +351,9 @@ phyto_max.df <- interpolated.df %>%
   ungroup()
 ```
 
-# Combine Datasets 
+# Combine Datasets
 
-```{r}
+``` r
 processed_bf <- interpolated.df %>% 
   mutate(Subregion = gsub("Gulf_Stream_Sargasso", "GS/Sargasso", Subregion)) %>% 
   mutate(Season = Cruise, 
@@ -382,14 +371,18 @@ processed_bf <- interpolated.df %>%
   group_by(CampCN) %>%
   fill(Chl_max, .direction = "updown") %>% 
   ungroup()
+```
 
+    ## Joining, by = c("Cruise", "Station", "CampCN", "degree_bin", "Target_Z")
+
+    ## Joining, by = c("Cruise", "Station", "CampCN", "degree_bin")
+
+    ## Joining, by = c("Cruise", "Station", "CampCN", "Target_Z")
+
+``` r
 processed_bf$Cruise <- factor(processed_bf$Cruise, levels = levels)
 processed_bf$Season <- factor(processed_bf$Season, levels = levels)
 processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
 
 saveRDS(processed_bf,"~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
-
 ```
-
-
-

@@ -2,7 +2,7 @@
 title: "Export_MS"
 author: "Nicholas Baetge"
 date: "1/30/2020"
-output: html_document
+output: github_document
 ---
 
 # Intro

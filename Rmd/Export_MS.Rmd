@@ -226,25 +226,34 @@ See Cruise_Map.Rmd and ARGO.Rmd  documents
 # Figure 2. MLD Comparison
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 10, fig.width = 16, fig.align = "center", warning = FALSE}
-naames_mld <- processed_bf %>% 
-  select(Season, Station, CampCN, degree_bin, Max_MLD, Z_MLD) %>%
+mlds <- processed_bf %>% 
+  select(Season, Station, CampCN, degree_bin, Latitude, Max_MLD, Z_MLD) %>%
   group_by(Season, Station) %>% 
   mutate(mean_mld = mean(Z_MLD),
-         sd_mld = sd(Z_MLD)) %>% 
+         sd_mld = sd(Z_MLD),
+         ave_lat = mean(Latitude)) %>% 
   ungroup() %>% 
-  select(Season, degree_bin, Max_MLD, mean_mld, sd_mld) %>% 
+  select(Season, Station, degree_bin, ave_lat, Max_MLD, mean_mld, sd_mld) %>% 
+  distinct() 
+
+naames_mld <- mlds %>% 
+  select(-Max_MLD, -degree_bin) %>% 
+  distinct()
+
+argo_mld <- mlds %>% 
+  select(Season, degree_bin, Max_MLD) %>% 
   distinct()
 
 naames_mld.plot <- naames_mld %>% 
-  ggplot(aes(x = degree_bin)) +
-  geom_errorbar(aes(x = degree_bin, ymin = mean_mld - sd_mld, ymax = mean_mld + sd_mld)) +
-  geom_point(aes(y = Max_MLD), size = 6, shape = 4, color = "black", stroke = 1, alpha = 0.7) +
-  geom_point(aes(y = mean_mld, fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) +
+  ggplot() +
+  geom_errorbar(aes(x = ave_lat, ymin = mean_mld - sd_mld, ymax = mean_mld + sd_mld)) +
+  geom_point(aes(x = ave_lat, y = mean_mld, fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) +
+  geom_point(data = argo_mld, aes(x = degree_bin, y = Max_MLD), size = 8, shape = 22, color = "black", fill = "yellow", stroke = 1, alpha = 0.7) +
   scale_y_reverse(expand = c(0,0)) +
   scale_colour_manual(values = custom.colors) +
   scale_fill_manual(values = custom.colors) +
   custom_theme() +
-  labs(x = "", y = expression(italic("Maximum Mixed Layer, m")))
+  labs(x = "Latitudinal Bin, ˚N", y = expression(italic("Maximum Mixed Layer, m")))
 
 naames_mld.plot
 ```
@@ -265,7 +274,7 @@ profiles.df <- processed_export.aut %>%
 n <-  profiles.df %>% 
   ggplot(aes(x = Target_Z, y = ave_N)) +
    geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_N), yend = max(ave_N), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = 500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_N), yend = max(ave_N), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_line(aes(colour = Season), size = 0.7) +
   geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 
@@ -283,7 +292,7 @@ n <-  profiles.df %>%
 doc <-  profiles.df %>% 
   ggplot(aes(x = Target_Z, y = ave_DOC)) +
   geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_DOC), yend = max(ave_DOC), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = 500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_DOC), yend = max(ave_DOC), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_line(aes(colour = Season), size = 0.7) +
   geom_point(aes(fill = Season), size = 6, shape = 21, color = "black", stroke = 1, alpha = 0.7) + 

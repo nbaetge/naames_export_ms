@@ -258,7 +258,7 @@ naames_mld.plot <- naames_mld %>%
 naames_mld.plot
 ```
 ```{r include = FALSE}
-ggsave("f2.jpg", naames_mld.plot, device = "jpg",  width = 16, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f2.jpg", naames_mld.plot, device = "jpg",  width = 16, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
@@ -316,7 +316,7 @@ combined_r.plot <- grid.arrange(a,b, layout_matrix = lay )
 ```
 
 ```{r include = FALSE}
-ggsave("f3.jpg", combined_r.plot, device = "jpg",  width = 16, height = 12, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f3.jpg", combined_r.plot, device = "jpg",  width = 16, height = 12, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 # Figure 4. ∆DOC, NCP, DOC:NCP Profiles
@@ -388,7 +388,7 @@ combined_r.plot <- grid.arrange(a,b, c, layout_matrix = lay )
 
 ```
 ```{r include = FALSE}
-ggsave("f4.jpg", combined_r.plot, device = "jpg",  width = 22, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f4.jpg", combined_r.plot, device = "jpg",  width = 22, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 # Figure 5. DOC:NCP Boxplots
@@ -420,7 +420,7 @@ f4.plot
 ```
 
 ```{r include = FALSE}
-ggsave("f5.jpg", f4.plot, device = "jpg",  width = 7, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f5.jpg", f4.plot, device = "jpg",  width = 7, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 # Figure 6. DOC:NCP v NCP and Export v NCP
@@ -473,7 +473,7 @@ b <- arrangeGrob(f5b.plot, top = textGrob("b", x = unit(0, "npc"), y   = unit(1,
 combined_r.plot <- grid.arrange(a,b, layout_matrix = lay ) 
 ```
 ```{r include = FALSE}
-ggsave("f6.jpg", combined_r.plot, device = "jpg",  width = 18, height = 12, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f6.jpg", combined_r.plot, device = "jpg",  width = 18, height = 12, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
@@ -549,7 +549,7 @@ combined_r.plot <- grid.arrange(a,b, layout_matrix = lay )
 ```
 
 ```{r include = FALSE}
-ggsave("f7.jpg", combined_r.plot, device = "jpg",  width = 14, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f7.jpg", combined_r.plot, device = "jpg",  width = 14, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 # Figure 8. ∆DOC:NCP v Pro
@@ -617,7 +617,7 @@ combined_r.plot <- grid.arrange(a,b, layout_matrix = lay )
 ```
 
 ```{r include = FALSE}
-ggsave("f8.jpg", combined_r.plot, device = "jpg",  width = 20, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("f8.jpg", combined_r.plot, device = "jpg",  width = 20, height = 10, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 # Supplemental Figures. Profiles
@@ -627,9 +627,9 @@ See ProcessedExport.rMD document
 ```{r include = F}
 #converting pdf images from ppt to jpg
 
-fig.pdf <- image_read_pdf("~/Desktop/Export_MS/Submission2/fig_conversion/f7.pdf")
-fig.jpg <- image_convert(fig.pdf, "jpeg")
-image_write(fig.jpg, path = "~/Desktop/Export_MS/Submission2/fig_conversion/f7.jpg", format = "jpeg")
+#fig.pdf <- image_read_pdf("~/Desktop/Export_MS/Submission2/fig_conversion/f7.pdf")
+#fig.jpg <- image_convert(fig.pdf, "jpeg")
+#image_write(fig.jpg, path = "~/Desktop/Export_MS/Submission2/fig_conversion/f7.jpg", format = "jpeg")
 
 
 ```

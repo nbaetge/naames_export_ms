@@ -346,7 +346,7 @@ processed_export <- redis_areas %>%
 processed_export[ is.na(processed_export) ] <- NA
 
 
-saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds")
+#saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds")
 ```
 
 # Plot Profiles

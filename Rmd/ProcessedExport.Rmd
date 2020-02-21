@@ -382,7 +382,7 @@ processed_export <- redis_areas %>%
 processed_export[ is.na(processed_export) ] <- NA
 
 
-saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds")
+#saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds")
 ```
 
 # Plot Profiles 
@@ -392,11 +392,11 @@ saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carls
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 20, fig.align = "center", warning = FALSE}
 n.plot <-  processed_export %>% 
   filter(Season == "Late Spring", 
-         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1250, 1500)) %>% 
+         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750)) %>% 
   mutate(bin_plot = paste(degree_bin, "˚N", sep = "")) %>% 
   ggplot(aes(x = Target_Z, y = ave_N, group = Station)) +
   geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_N), yend = max(ave_N), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = 1500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_N), yend = max(ave_N), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_errorbar(aes(x = Target_Z, ymin = ave_N - sd_N, ymax = ave_N + sd_N)) +
   geom_line(aes(colour = Season), size = 0.7) +
@@ -417,18 +417,18 @@ n.plot <-  processed_export %>%
 n.plot
 ```
 ```{r include = FALSE}
-ggsave("s1a.jpg", n.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s1a.jpg", n.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 32, fig.align = "center", warning = FALSE}
 n2.plot <-  processed_export %>% 
   filter(Season == "Early Autumn", 
-         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1250, 1500)) %>% 
+         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750)) %>% 
   mutate(bin_plot = paste(degree_bin, "˚N", sep = "")) %>% 
   ggplot(aes(x = Target_Z, y = ave_N, group = Station)) +
   geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_N), yend = max(ave_N), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = 1500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_N_vol, yend = redis_N_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_N), yend = max(ave_N), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_errorbar(aes(x = Target_Z, ymin = ave_N - sd_N, ymax = ave_N + sd_N)) +
   geom_line(aes(colour = Season), size = 0.7) +
@@ -458,11 +458,11 @@ ggsave("s1b.jpg", n2.plot, device = "jpg",  width = 25, height = 8, path = "~/De
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 20, fig.align = "center", warning = FALSE}
 doc.plot <-  processed_export %>% 
   filter(Season == "Late Spring",
-         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1250, 1500)) %>% 
+         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750)) %>% 
   mutate(bin_plot = paste(degree_bin, "˚N", sep = "")) %>% 
   ggplot(aes(x = Target_Z, y = ave_DOC, group = Station)) +
   geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_DOC), yend = max(ave_DOC), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = 1500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_DOC), yend = max(ave_DOC), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_errorbar(aes(x = Target_Z, ymin = ave_DOC - sd_DOC, ymax = ave_DOC + sd_DOC)) +
   geom_line(aes(colour = Season), size = 0.7) +
@@ -484,17 +484,17 @@ doc.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s2a.jpg", doc.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s2a.jpg", doc.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 35, fig.align = "center", warning = FALSE}
 doc1.plot <-  processed_export %>% 
   filter(Season == "Early Autumn",
-         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1250, 1500)) %>% 
+         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750)) %>% 
   mutate(bin_plot = paste(degree_bin, "˚N", sep = "")) %>% 
   ggplot(aes(x = Target_Z, y = ave_DOC, group = Station)) +
    geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_DOC), yend = max(ave_DOC), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = 1500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_DOC_vol, yend = redis_DOC_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_DOC), yend = max(ave_DOC), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_errorbar(aes(x = Target_Z, ymin = ave_DOC - sd_DOC, ymax = ave_DOC + sd_DOC)) +
   geom_line(aes(colour = Season), size = 0.7) +
@@ -516,7 +516,7 @@ doc1.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s2b.jpg", doc1.plot, device = "jpg",  width = 29, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s2b.jpg", doc1.plot, device = "jpg",  width = 29, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ## Silicate
@@ -524,11 +524,11 @@ ggsave("s2b.jpg", doc1.plot, device = "jpg",  width = 29, height = 8, path = "~/
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 20, fig.align = "center", warning = FALSE}
 si.plot <-  processed_export %>% 
   filter(Season == "Late Spring",
-         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1250, 1500)) %>% 
+         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750)) %>% 
   mutate(bin_plot = paste(degree_bin, "˚N", sep = "")) %>% 
   ggplot(aes(x = Target_Z, y = ave_Si, group = Station)) +
  geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_Si), yend = max(ave_Si), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_Si_vol, yend = redis_Si_vol, x = 0, xend = 1500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_Si_vol, yend = redis_Si_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_Si), yend = max(ave_Si), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_errorbar(aes(x = Target_Z, ymin = ave_Si - sd_Si, ymax = ave_Si + sd_Si)) +
   geom_line(aes(colour = Season), size = 0.7) +
@@ -550,17 +550,17 @@ si.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s3a.jpg", si.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s3a.jpg", si.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 34, fig.align = "center", warning = FALSE}
 si2.plot <-  processed_export %>% 
   filter(Season == "Early Autumn",
-         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750, 1000, 1250, 1500)) %>% 
+         Target_Z %in% c(0, 5, 10, 25, 50, 75, 100, 150, 200, 300, 400, 500, 750)) %>% 
   mutate(bin_plot = paste(degree_bin, "˚N", sep = "")) %>% 
   ggplot(aes(x = Target_Z, y = ave_Si, group = Station)) +
   geom_segment(aes( x = Max_MLD, xend = Max_MLD, y = min(ave_Si), yend = max(ave_Si), group = Station ), colour = "#377EB8", linetype = 3, size = 1.5 ) +
-  geom_segment(aes(y = redis_Si_vol, yend = redis_Si_vol, x = 0, xend = 1500, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
+  geom_segment(aes(y = redis_Si_vol, yend = redis_Si_vol, x = 0, xend = Max_MLD, group = Station ), colour = "black", linetype = 2, size = 1.5, alpha = 0.7 ) +
   geom_segment(aes(x = 100, xend = 100, y = min(ave_Si), yend = max(ave_Si), group = Station), colour = "black", linetype = 3, size = 1.5) +
   geom_errorbar(aes(x = Target_Z, ymin = ave_Si - sd_Si, ymax = ave_Si + sd_Si)) +
   geom_line(aes(colour = Season), size = 0.7) +
@@ -582,7 +582,7 @@ si2.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s3b.jpg", si2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s3b.jpg", si2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ## NCP

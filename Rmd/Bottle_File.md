@@ -360,8 +360,7 @@ processed_bf <- interpolated.df %>%
          Season = gsub("AT32", "Late Autumn", Season),
          Season = gsub("AT34", "Late Spring", Season),
          Season = gsub("AT38", "Early Autumn", Season),
-         Season = gsub("AT39-6", "Early Spring", Season),
-         Cruise = gsub("AT39-6", "AT39", Cruise)) %>% 
+         Season = gsub("AT39-6", "Early Spring", Season)) %>% 
   select(Cruise, Subregion, Season, Station, everything()) %>% 
   left_join(., chl_max.df) %>% 
   left_join(., phyto_max.df) %>% 
@@ -380,9 +379,9 @@ processed_bf <- interpolated.df %>%
     ## Joining, by = c("Cruise", "Station", "CampCN", "Target_Z")
 
 ``` r
-processed_bf$Cruise <- factor(processed_bf$Cruise, levels = levels)
-processed_bf$Season <- factor(processed_bf$Season, levels = levels)
-processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
+# processed_bf$Cruise <- factor(processed_bf$Cruise, levels = levels)
+# processed_bf$Season <- factor(processed_bf$Season, levels = levels)
+# processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
 
-saveRDS(processed_bf,"~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
+#saveRDS(processed_bf,"~/naames_export_ms/Output/processed_bf.2.2020.rds")
 ```

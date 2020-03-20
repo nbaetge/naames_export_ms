@@ -12,7 +12,7 @@ file
 # Import Data
 
 ``` r
-processed_bf <-  read_rds("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
+processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 ```
 
 # Subset Nitrogen and Phytoplankton Data
@@ -187,8 +187,8 @@ redis_N <- composite %>%
   #redistribution value of that station to the 44˚N station of the spring cruise
   group_by(degree_bin) %>% 
   arrange(degree_bin) %>% 
-  mutate(redis_N_vol = ifelse(Cruise == "AT34" & degree_bin %in% c(44,48,50), NA, redis_N_vol),
-         redis_Si_vol = ifelse(Cruise == "AT34" & degree_bin %in% c(44,48,50), NA, redis_Si_vol),
+  mutate(redis_N_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_N_vol),
+         redis_Si_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_Si_vol),
          ave_redis_N = mean(redis_N_vol, na.rm = T),
          redis_N_vol = ifelse(is.na(redis_N_vol) & degree_bin == 44, ave_redis_N, redis_N_vol),
          ave_redis_Si = mean(redis_Si_vol, na.rm = T),
@@ -211,7 +211,7 @@ redis_DOC <- composite %>%
   ungroup() %>% 
   group_by(degree_bin) %>% 
   arrange(degree_bin) %>% 
-  mutate(redis_DOC_vol = ifelse(Cruise == "AT34" & degree_bin %in% c(44,48,50), NA, redis_DOC_vol),
+  mutate(redis_DOC_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_DOC_vol),
          ave_redis_DOC = mean(redis_DOC_vol, na.rm = T),
          redis_DOC_vol = ifelse(is.na(redis_DOC_vol) & degree_bin == 44, ave_redis_DOC, redis_DOC_vol)) %>% 
   select(-c(ave_redis_DOC)) %>% 
@@ -346,7 +346,7 @@ processed_export <- redis_areas %>%
 processed_export[ is.na(processed_export) ] <- NA
 
 
-#saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds")
+#saveRDS(processed_export, "~/naames_export_ms/Output/processed_export.rds")
 ```
 
 # Plot Profiles

@@ -25,8 +25,8 @@ library(gridExtra)
 library(lubridate)
 
 custom_theme <- function() {
-  theme_test(base_size=30) %+replace%
-    theme(legend.position="top",
+  theme_test(base_size = 30) %+replace%
+    theme(legend.position = "top",
           legend.title = element_blank(),
           legend.spacing.x = unit(0.5,"cm"),
           legend.background = element_rect(fill = "transparent",colour = NA),
@@ -45,7 +45,7 @@ custom.colors <- c("AT39" = "#377EB8", "AT34" = "#4DAF4A", "AT38" = "#E41A1C", "
 # Import Data 
 
 ```{r}
-processed_bf <-  read_rds("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
+processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 
 ```
 
@@ -221,8 +221,8 @@ redis_N <- composite %>%
   #redistribution value of that station to the 44˚N station of the spring cruise
   group_by(degree_bin) %>% 
   arrange(degree_bin) %>% 
-  mutate(redis_N_vol = ifelse(Cruise == "AT34" & degree_bin %in% c(44,48,50), NA, redis_N_vol),
-         redis_Si_vol = ifelse(Cruise == "AT34" & degree_bin %in% c(44,48,50), NA, redis_Si_vol),
+  mutate(redis_N_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_N_vol),
+         redis_Si_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_Si_vol),
          ave_redis_N = mean(redis_N_vol, na.rm = T),
          redis_N_vol = ifelse(is.na(redis_N_vol) & degree_bin == 44, ave_redis_N, redis_N_vol),
          ave_redis_Si = mean(redis_Si_vol, na.rm = T),
@@ -245,7 +245,7 @@ redis_DOC <- composite %>%
   ungroup() %>% 
   group_by(degree_bin) %>% 
   arrange(degree_bin) %>% 
-  mutate(redis_DOC_vol = ifelse(Cruise == "AT34" & degree_bin %in% c(44,48,50), NA, redis_DOC_vol),
+  mutate(redis_DOC_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_DOC_vol),
          ave_redis_DOC = mean(redis_DOC_vol, na.rm = T),
          redis_DOC_vol = ifelse(is.na(redis_DOC_vol) & degree_bin == 44, ave_redis_DOC, redis_DOC_vol)) %>% 
   select(-c(ave_redis_DOC)) %>% 
@@ -382,7 +382,7 @@ processed_export <- redis_areas %>%
 processed_export[ is.na(processed_export) ] <- NA
 
 
-#saveRDS(processed_export, "~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds")
+#saveRDS(processed_export, "~/naames_export_ms/Output/processed_export.rds")
 ```
 
 # Plot Profiles 
@@ -450,7 +450,7 @@ n2.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s1b.jpg", n2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s1b.jpg", n2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
@@ -613,7 +613,7 @@ ncp.plot <-  processed_export %>%
 ncp.plot
 ```
 ```{r include = FALSE}
-ggsave("s4a.jpg", ncp.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s4a.jpg", ncp.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 30, fig.align = "center", warning = FALSE}
@@ -643,7 +643,7 @@ ncp2.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s4b.jpg", ncp2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s4b.jpg", ncp2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ## ∆DOC
@@ -676,7 +676,7 @@ ddoc.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s5a.jpg", ddoc.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s5a.jpg", ddoc.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ```{r fig.align = "center", fig.height = 8, fig.width = 33, echo = FALSE, message=FALSE, warning=FALSE}
@@ -707,7 +707,7 @@ ddoc2.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s5b.jpg", ddoc2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s5b.jpg", ddoc2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 ## ∆DOC:NCP
@@ -740,7 +740,7 @@ docncp.plot <-  processed_export %>%
 docncp.plot
 ```
 ```{r include = FALSE}
-ggsave("s6a.jpg", docncp.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s6a.jpg", docncp.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
@@ -773,7 +773,7 @@ docncp2.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s6b.jpg", docncp2.plot, device = "jpg",  width = 27, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s6b.jpg", docncp2.plot, device = "jpg",  width = 27, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
@@ -807,7 +807,7 @@ density.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s7a.jpg", density.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s7a.jpg", density.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```
 
 
@@ -839,5 +839,5 @@ density2.plot
 ```
 
 ```{r include = FALSE}
-ggsave("s7b.jpg", density2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
+#ggsave("s7b.jpg", density2.plot, device = "jpg",  width = 25, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```

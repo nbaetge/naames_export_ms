@@ -17,61 +17,82 @@ deployed on the NAAMES cruises.
 # Import and Wrangle Data
 
 ``` r
+#pass all the filenames of everything in a float folder into a variable
+filenames <- list.files("~/naames_export_ms/Input/Argo/lovbio030b/",pattern = "*.csv", full.names = T) 
+profile.names <- list.files("~/naames_export_ms/Input/Argo/lovbio030b/",pattern = "*.csv", full.names = F) 
+profile.number <- gsub('.csv', '', profile.names) %>% 
+  gsub('lovbio030b.', '', .) %>% 
+  as.numeric(.)
+
+#now go through all the files in the folder, pick out the filenames, and pass them into the variable 'filenames'. use the file names to interate through the files, extracting the data from each csv, and combining it into one list
+master <-  lapply(filenames, function(i){
+  read_csv(i)
+})
+names(master) <- profile.number
+
+#convert to data frame
+profiles <- bind_rows(master, .id = "id")
+
+#save csv
+#write_csv(profiles, "lovbio030b_profiles.csv")
+```
+
+``` r
 #load each float dataset
-lovbio014b <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/lovbio014b_profiles.csv") %>%  
+lovbio014b <- read_csv("~/naames_export_ms/Input/Argo/lovbio014b_profiles.csv") %>%  
   mutate(float = "lovbio014b") %>% select(float, id, datetime:s, chla_adj) %>%
   rename(chla = chla_adj)
-lovbio030b <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/lovbio030b_profiles.csv") %>%  
+lovbio030b <- read_csv("~/naames_export_ms/Input/Argo/lovbio030b_profiles.csv") %>%  
   mutate(float = "lovbio030b") %>% select(float, id, datetime:s, chla_adj) %>%
   rename(chla = chla_adj)
-lovbio032b <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/lovbio032b_profiles.csv") %>%  
+lovbio032b <- read_csv("~/naames_export_ms/Input/Argo/lovbio032b_profiles.csv") %>%  
   mutate(float = "lovbio032b") %>% select(float, id, datetime:s, chla_adj) %>%
   rename(chla = chla_adj)
-metbio003d <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/metbio003d_profiles.csv") %>%  
+metbio003d <- read_csv("~/naames_export_ms/Input/Argo/metbio003d_profiles.csv") %>%  
   mutate(float = "metbio003d") %>% select(float, id, datetime:s, chla_adj) %>%
   rename(chla = chla_adj)
-metbio010d <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/metbio010d_profiles.csv") %>%  
+metbio010d <- read_csv("~/naames_export_ms/Input/Argo/metbio010d_profiles.csv") %>%  
   mutate(float = "metbio010d") %>% select(float, id, datetime:s, chla_adj) %>%
   rename(chla = chla_adj)
 #this dataset contained NANs which are problematic for the potential temperature and n2 calculations. thus, they are removed here. 
 metbio010d <- metbio010d[complete.cases(metbio010d),] 
-n0572 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0572_profiles.csv") %>%  
+n0572 <- read_csv("~/naames_export_ms/Input/Argo/n0572_profiles.csv") %>%  
   mutate(float = "n0572") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0573 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0573_profiles.csv") %>%  
+n0573 <- read_csv("~/naames_export_ms/Input/Argo/n0573_profiles.csv") %>%  
   mutate(float = "n0573") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0574 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0574_profiles.csv") %>%  
+n0574 <- read_csv("~/naames_export_ms/Input/Argo/n0574_profiles.csv") %>%  
   mutate(float = "n0574") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0646 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0646_profiles.csv") %>%  
+n0646 <- read_csv("~/naames_export_ms/Input/Argo/n0646_profiles.csv") %>%  
   mutate(float = "n0646") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0647 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0647_profiles.csv") %>%  
+n0647 <- read_csv("~/naames_export_ms/Input/Argo/n0647_profiles.csv") %>%  
   mutate(float = "n0647") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0648 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0648_profiles.csv") %>%  
+n0648 <- read_csv("~/naames_export_ms/Input/Argo/n0648_profiles.csv") %>%  
   mutate(float = "n0648") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0846 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0846_profiles.csv") %>%  
+n0846 <- read_csv("~/naames_export_ms/Input/Argo/n0846_profiles.csv") %>%  
   mutate(float = "n0846") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0847 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0847_profiles.csv") %>%  
+n0847 <- read_csv("~/naames_export_ms/Input/Argo/n0847_profiles.csv") %>%  
   mutate(float = "n0847") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0848 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0848_profiles.csv") %>%  
+n0848 <- read_csv("~/naames_export_ms/Input/Argo/n0848_profiles.csv") %>%  
   mutate(float = "n0848") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0849 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0849_profiles.csv") %>%  
+n0849 <- read_csv("~/naames_export_ms/Input/Argo/n0849_profiles.csv") %>%  
   mutate(float = "n0849") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0850 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0850_profiles.csv") %>%  
+n0850 <- read_csv("~/naames_export_ms/Input/Argo/n0850_profiles.csv") %>%  
   mutate(float = "n0850") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0851 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0851_profiles.csv") %>%  
+n0851 <- read_csv("~/naames_export_ms/Input/Argo/n0851_profiles.csv") %>%  
   mutate(float = "n0851") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
-n0852 <- read_csv("~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Input/Argo/n0852_profiles.csv") %>%  
+n0852 <- read_csv("~/naames_export_ms/Input/Argo/n0852_profiles.csv") %>%  
   mutate(float = "n0852") %>% select(float, id, datetime:s, o2_c, chla_adj) %>%
   rename(chla = chla_adj)
 
@@ -172,7 +193,7 @@ max_mld.df <- float_combined.df %>%
   arrange(bin) %>% 
   select(bin, nperbin, nperwinter, max_mld, float, profile, mon, year, lat, lon )
 
-saveRDS(max_mld.df, "~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/max_mld.rds")
+#saveRDS(max_mld.df, "~/Google Drive File Stream/Shared drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/max_mld.rds")
 ```
 
 | bin | nperbin | nperwinter | max\_mld | float      | profile | mon | year |      lat |        lon |
@@ -249,4 +270,4 @@ interpolated_t.df <- data.frame(rbindlist(interpolated_t.list, idcol = T)) %>%
 
 ## Plot
 
-<img src="ARGO_files/figure-gfm/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
+<img src="ARGO_files/figure-gfm/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />

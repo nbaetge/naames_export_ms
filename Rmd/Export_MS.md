@@ -12,9 +12,9 @@ manuscript.
 # Import and Wrangle Data
 
 ``` r
-processed_bf <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_bf.2.2020.rds")
+processed_bf <- read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 
-processed_export <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/processed_export.rds") 
+processed_export <- read_rds("~/naames_export_ms/Output/processed_export_n2_n3.rds") 
 
 processed_export$Season <- factor(processed_export$Season, levels = levels)
 
@@ -32,6 +32,7 @@ We’ll use station/day averages for any model regressions we conduct.
 
 ``` r
 regression.means <- processed_export %>% 
+  filter(!Cruise == "Early Spring") %>% 
   select(Cruise:Subregion, NCP_mol_100, NCP_mol_cm, NCP_mol_phy, int_delta_DOC_100, int_delta_DOC_100_maxmld,int_delta_DOC_phy, int_delta_DOC_cm, doc_ncp_100:si_ncp_100, int_Pro_cm_vol:int_Nano_phy_vol) %>%
   distinct() %>% 
   group_by(Cruise, Station) %>% 
@@ -137,7 +138,7 @@ lmodel2(doc_ncp_cm ~ int_Syn_cm_vol, data = si_t2_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.2542941 -6.747025e-10   -3.865761e-08              0.27
+    ## 1    OLS 0.2542941 -6.747025e-10   -3.865761e-08              0.17
     ## 2     MA 0.2308279  0.000000e+00    0.000000e+00              1.00
     ## 3    SMA 0.3111819 -2.310348e-09   -1.323732e-07                NA
     ## 
@@ -172,7 +173,7 @@ lmodel2(doc_ncp_phy ~ int_Syn_phy_vol, data = si_t2_data, nperm = 99)
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
     ## 1    OLS 0.3057485 -1.645708e-09   -9.429214e-08              0.15
-    ## 2     MA 0.2537379  0.000000e+00    0.000000e+00              1.00
+    ## 2     MA 0.2537379  0.000000e+00    0.000000e+00              0.99
     ## 3    SMA 0.3596059 -3.349849e-09   -1.919322e-07                NA
     ## 
     ## Confidence intervals
@@ -205,8 +206,8 @@ lmodel2(doc_ncp_cm ~ int_Pico_cm_vol, data = si_t2_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.2804148 -6.409816e-09   -3.672554e-07              0.02
-    ## 2     MA 0.2308279  0.000000e+00    0.000000e+00              0.96
+    ## 1    OLS 0.2804148 -6.409816e-09   -3.672554e-07              0.01
+    ## 2     MA 0.2308279  0.000000e+00    0.000000e+00              0.95
     ## 3    SMA 0.3126662 -1.057877e-08   -6.061190e-07                NA
     ## 
     ## Confidence intervals
@@ -240,7 +241,7 @@ lmodel2(doc_ncp_phy ~ int_Pico_phy_vol, data = si_t2_data, nperm = 99)
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
     ## 1    OLS 0.3274874 -9.149701e-09   -5.242392e-07              0.01
-    ## 2     MA 0.3137920 -7.450581e-09   -4.268868e-07              0.06
+    ## 2     MA 0.3137920 -7.450581e-09   -4.268868e-07              0.11
     ## 3    SMA 0.3517235 -1.215654e-08   -6.965187e-07                NA
     ## 
     ## Confidence intervals
@@ -307,8 +308,8 @@ lmodel2(doc_ncp_phy ~ int_Nano_phy_vol, data = si_t2_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.3157872 -3.492917e-08   -2.001294e-06              0.03
-    ## 2     MA 0.3166063 -3.539026e-08   -2.027712e-06              0.03
+    ## 1    OLS 0.3157872 -3.492917e-08   -2.001294e-06              0.01
+    ## 2     MA 0.3166063 -3.539026e-08   -2.027712e-06              0.01
     ## 3    SMA 0.3460335 -5.195562e-08   -2.976838e-06                NA
     ## 
     ## Confidence intervals
@@ -343,6 +344,7 @@ documents
 ``` r
 f4_data <- regression.means %>% 
   select(Season, doc_ncp_100) %>% 
+  filter(!Season == "Early Spring") %>% 
   distinct()
 f4_test <- t.test(doc_ncp_100 ~ Season, data = f4_data)
 ```
@@ -456,8 +458,8 @@ f6b <-  lmodel2(doc_ncp_100 ~ si_n_100, data = f6_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept      Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.4423011 -0.4648342       -24.93062              0.02
-    ## 2     MA 0.4695757 -0.5160633       -27.29660              0.02
+    ## 1    OLS 0.4423011 -0.4648342       -24.93062              0.01
+    ## 2     MA 0.4695757 -0.5160633       -27.29660              0.01
     ## 3    SMA 0.5048767 -0.5823683       -30.21517                NA
     ## 
     ## Confidence intervals
@@ -498,8 +500,8 @@ f7a <- lmodel2(doc_ncp_cm ~ int_Pro_cm_vol, data = f7_data , nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept        Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.1544980 2.009164e-09    1.151166e-07              0.03
-    ## 2     MA 0.2133675 0.000000e+00    0.000000e+00              1.00
+    ## 1    OLS 0.1544980 2.009164e-09    1.151166e-07              0.01
+    ## 2     MA 0.2133675 0.000000e+00    0.000000e+00              0.99
     ## 3    SMA 0.1308084 2.817667e-09    1.614404e-07                NA
     ## 
     ## Confidence intervals
@@ -532,7 +534,7 @@ f7b <- lmodel2(doc_ncp_phy ~ int_Pro_phy_vol, data = f7_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept        Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.1528967 2.392128e-09    1.370588e-07              0.03
+    ## 1    OLS 0.1528967 2.392128e-09    1.370588e-07              0.02
     ## 2     MA 0.2301448 0.000000e+00    0.000000e+00              0.99
     ## 3    SMA 0.1162865 3.525828e-09    2.020151e-07                NA
     ## 

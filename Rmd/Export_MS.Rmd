@@ -438,7 +438,7 @@ f4.plot <- ggplot(f4_data,aes(Season, doc_ncp_100)) +
   geom_boxplot(outlier.shape = NA, notch = F, color = "black", alpha = 0.4) +
   geom_jitter(shape = 21, color = "black", alpha = 0.7, size = 6, stroke = 1, width = 0.25) +
   stat_summary(fun.y = mean, geom = "point", shape = 23, size = 4, fill = "white", stroke = 2) +
-  annotate( geom = "text", label = "t = -2.50, df = 10, p = 0.03", x = "Late Spring", y = 0.38, size = 6) +
+  annotate( geom = "text", label = expression(paste("t = -2.50, df = 10, ", italic("p "), "= 0.03")), x = "Late Spring", y = 0.38, size = 6) +
   scale_y_continuous(expand = c(0,0), limits = c(0,0.4)) +
   labs(y = expression(italic(paste("∆DOC:NCP"))), x = "") +
   scale_fill_manual(values = custom.colors) +
@@ -491,7 +491,7 @@ f5b.plot  <- f5_data  %>%
   scale_x_continuous(breaks = pretty_breaks()) +
   scale_y_continuous(breaks = pretty_breaks()) +
   guides(fill = F) +
-  annotate( geom = "text", label = expression(atop("y = 0.15x - 0.12", paste("r"^2,"= 0.77, p < 0.01"))), x = 5.5, y = 0.4, size = 7) 
+  annotate( geom = "text", label = expression(atop("y = 0.15x - 0.12", paste("r"^2,"= 0.77, ", italic("p "), "< 0.01"))), x = 5.5, y = 0.4, size = 7) 
 
 
 lay <- rbind(c(1,2))
@@ -550,7 +550,7 @@ f6a.plot <- f6_data %>%
   scale_x_continuous(breaks = pretty_breaks()) +
   scale_y_continuous(breaks = pretty_breaks()) +
   guides(fill = F)  +
-  annotate( geom = "text", label = expression(atop(paste("y = 0.01x - 0.17, ", "r"^2,"= 0.77, p < 0.01;"), paste("Slope t-value = 2.00, p < 0.07; Breush-Pagan test p = 0.30"))), x = 48.1, y = 0.37, size = 6.5) 
+  annotate( geom = "text", label = expression(atop(paste("y = 0.01x - 0.17, ", "r"^2,"= 0.77, ", italic("p "), "< 0.01;"), paste("Slope t-value = 2.00, ", italic("p"), "< 0.07; Breush-Pagan test ", italic("p "), "= 0.30"))), x = 48.1, y = 0.37, size = 6.5) 
 
 f6b.plot <- f6_data %>%  
   ggplot() +
@@ -563,7 +563,7 @@ f6b.plot <- f6_data %>%
   scale_y_continuous(breaks = pretty_breaks()) +
   scale_x_continuous(breaks = pretty_breaks()) +
   guides(fill = F) +
-  annotate( geom = "text", label = expression(atop("y = -0.58x + 0.50", paste("r"^2,"= 0.63, p < 0.01"))), x = 0.65, y = 0.34, size = 7) 
+  annotate( geom = "text", label = expression(atop("y = -0.58x + 0.50", paste("r"^2,"= 0.63, ", italic("p "), "< 0.01"))), x = 0.65, y = 0.34, size = 7) 
 
 lay <- rbind(c(1,2))
 
@@ -616,7 +616,7 @@ f7a.plot <- f7_data %>%
   ggtitle("Integrated to CM") +
   theme(plot.title = element_text(size = 30, face = "bold"),
         axis.text.x = element_text(angle = 90)) +
-  annotate( geom = "text", label = expression(atop("y = 2.82e-09x + 0.13", paste("r"^2,"= 0.51, p = 0.01"))), x = 7*10^7, y = 0.11, size = 7) 
+  annotate( geom = "text", label = expression(atop("y = 2.82e-09x + 0.13", paste("r"^2,"= 0.51, ", italic("p "), "= 0.01"))), x = 7*10^7, y = 0.11, size = 7) 
 
 f7b.plot <- f7_data %>%  
   ggplot() +
@@ -632,7 +632,7 @@ f7b.plot <- f7_data %>%
   ggtitle("Integrated to PAM") +
     theme(plot.title = element_text(size = 30, face = "bold"),
         axis.text.x = element_text(angle = 90)) +
-  annotate( geom = "text", label = expression(atop("y = 3.53e-09x + 0.12", paste("r"^2,"= 0.46, p = 0.04"))), x = 7*10^7, y = 0.11, size = 7)
+  annotate( geom = "text", label = expression(atop("y = 3.53e-09x + 0.12", paste("r"^2,"= 0.46, ", italic("p "), "= 0.04"))), x = 7*10^7, y = 0.11, size = 7)
 
 
 lay <- rbind(c(1,2))
@@ -655,9 +655,9 @@ See ProcessedExport.rMD document
 ```{r include = F}
 #converting pdf images from ppt to jpg
 
-# fig.pdf <- image_read_pdf("~/Desktop/Export_MS/Final_Figures/f8_conv.pdf")
+# fig.pdf <- image_read_pdf("~/Desktop/Export_MS/Final_Figures/f6_conv.pdf")
 # fig.jpg <- image_convert(fig.pdf, "jpeg")
-# image_write(fig.jpg, path = "~/Desktop/Export_MS/Final_Figures/f8.jpg", format = "jpeg")
+# image_write(fig.jpg, path = "~/Desktop/Export_MS/Final_Figures/f6.jpg", format = "jpeg")
 
 
 ```

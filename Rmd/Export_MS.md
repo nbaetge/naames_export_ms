@@ -172,8 +172,8 @@ lmodel2(doc_ncp_phy ~ int_Syn_phy_vol, data = si_t2_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.3057485 -1.645708e-09   -9.429214e-08              0.15
-    ## 2     MA 0.2537379  0.000000e+00    0.000000e+00              0.99
+    ## 1    OLS 0.3057485 -1.645708e-09   -9.429214e-08              0.09
+    ## 2     MA 0.2537379  0.000000e+00    0.000000e+00              1.00
     ## 3    SMA 0.3596059 -3.349849e-09   -1.919322e-07                NA
     ## 
     ## Confidence intervals
@@ -206,8 +206,8 @@ lmodel2(doc_ncp_cm ~ int_Pico_cm_vol, data = si_t2_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.2804148 -6.409816e-09   -3.672554e-07              0.01
-    ## 2     MA 0.2308279  0.000000e+00    0.000000e+00              0.95
+    ## 1    OLS 0.2804148 -6.409816e-09   -3.672554e-07              0.03
+    ## 2     MA 0.2308279  0.000000e+00    0.000000e+00              0.99
     ## 3    SMA 0.3126662 -1.057877e-08   -6.061190e-07                NA
     ## 
     ## Confidence intervals
@@ -241,7 +241,7 @@ lmodel2(doc_ncp_phy ~ int_Pico_phy_vol, data = si_t2_data, nperm = 99)
     ## Regression results
     ##   Method Intercept         Slope Angle (degrees) P-perm (1-tailed)
     ## 1    OLS 0.3274874 -9.149701e-09   -5.242392e-07              0.01
-    ## 2     MA 0.3137920 -7.450581e-09   -4.268868e-07              0.11
+    ## 2     MA 0.3137920 -7.450581e-09   -4.268868e-07              0.08
     ## 3    SMA 0.3517235 -1.215654e-08   -6.965187e-07                NA
     ## 
     ## Confidence intervals
@@ -501,7 +501,7 @@ f7a <- lmodel2(doc_ncp_cm ~ int_Pro_cm_vol, data = f7_data , nperm = 99)
     ## Regression results
     ##   Method Intercept        Slope Angle (degrees) P-perm (1-tailed)
     ## 1    OLS 0.1544980 2.009164e-09    1.151166e-07              0.01
-    ## 2     MA 0.2133675 0.000000e+00    0.000000e+00              0.99
+    ## 2     MA 0.2133675 0.000000e+00    0.000000e+00              1.00
     ## 3    SMA 0.1308084 2.817667e-09    1.614404e-07                NA
     ## 
     ## Confidence intervals
@@ -534,7 +534,7 @@ f7b <- lmodel2(doc_ncp_phy ~ int_Pro_phy_vol, data = f7_data, nperm = 99)
     ## 
     ## Regression results
     ##   Method Intercept        Slope Angle (degrees) P-perm (1-tailed)
-    ## 1    OLS 0.1528967 2.392128e-09    1.370588e-07              0.02
+    ## 1    OLS 0.1528967 2.392128e-09    1.370588e-07              0.04
     ## 2     MA 0.2301448 0.000000e+00    0.000000e+00              0.99
     ## 3    SMA 0.1162865 3.525828e-09    2.020151e-07                NA
     ## 

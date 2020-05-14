@@ -62,7 +62,7 @@ subset <- processed_bf %>%
   mutate(degree_bin = ifelse(Cruise == "AT34" & Station == "4", 48, degree_bin),
          Max_MLD = ifelse(Cruise == "AT34" & Station == "4", 508, Max_MLD),) %>% 
   select(Cruise, Latitude, Longitude, Date, degree_bin, Station, Season, Subregion,  CampCN, 
-         Chl_max, Phyto_max, Max_MLD,  Target_Z,  interp_DOC, interp_N_N, interp_NO2, interp_NH4, interp_TDN, interp_SiO4,  interp_Pro_Influx, interp_Syn_Influx, interp_Pico_Influx, interp_Nano_Influx, Density00, Density11) %>% 
+         Chl_max, Phyto_max, Max_MLD,  Target_Z,  interp_DOC, interp_N_N, interp_NO2, interp_NH4, interp_TDN, interp_PO4, interp_SiO4,  interp_Pro_Influx, interp_Syn_Influx, interp_Pico_Influx, interp_Nano_Influx, Density00, Density11) %>% 
   rename(Pro = interp_Pro_Influx, 
          Syn = interp_Syn_Influx, 
          Pico = interp_Pico_Influx, 
@@ -174,13 +174,14 @@ interp_doc <- as.numeric(na.approx(to_interpolate.df$interp_DOC, na.rm = F))
 interp_don <- as.numeric(na.approx(to_interpolate.df$DON, na.rm = F))
 interp_Si <- as.numeric(na.approx(to_interpolate.df$interp_SiO4, na.rm = F))
 interp_N <- as.numeric(na.approx(to_interpolate.df$N, na.rm = F))
+interp_PO4 <- as.numeric(na.approx(to_interpolate.df$interp_PO4, na.rm = F))
 interp_p <- as.numeric(na.approx(to_interpolate.df$p, na.rm = F))
 interp_Pro <- as.numeric(na.approx(to_interpolate.df$Pro, na.rm = F))
 interp_Syn <- as.numeric(na.approx(to_interpolate.df$Syn, na.rm = F))
 interp_Pico <- as.numeric(na.approx(to_interpolate.df$Pico, na.rm = F))
 interp_Nano <- as.numeric(na.approx(to_interpolate.df$Nano, na.rm = F))
 Target_Z <- to_interpolate.df$Target_Z
-interpolations.df <- data.frame(Target_Z, interp_doc, interp_don, interp_Si,interp_N, interp_Pro, interp_Syn,
+interpolations.df <- data.frame(Target_Z, interp_doc, interp_don, interp_Si,interp_N, interp_PO4, interp_Pro, interp_Syn,
                                 interp_Pico, interp_Nano, interp_p)
 }
 
@@ -194,7 +195,7 @@ interpolations.df <- plyr::ldply(interpolations.list, data.frame) %>%
 #combine the interpolated and non-interpolated data frames
 interpolations.df$CampCN <- as.numeric(interpolations.df$CampCN)
 interpolated.df <- right_join(ave_phyto, interpolations.df) %>% 
-  select(Cruise:Max_MLD, ave_chlmax:sd_pmax, Target_Z, interp_p, interp_N, interp_doc, interp_don, interp_Si, interp_Pro:interp_Nano ) %>% 
+  select(Cruise:Max_MLD, ave_chlmax:sd_pmax, Target_Z, interp_p, interp_N, interp_PO4, interp_doc, interp_don, interp_Si, interp_Pro:interp_Nano ) %>% 
   fill(Cruise:sd_pmax, .direction = "updown")
 
 ```
@@ -208,6 +209,8 @@ composite <- interpolated.df %>%
          sd_p = sd(interp_p, na.rm = T),
          ave_N = mean(interp_N, na.rm = T),
          sd_N = sd(interp_N, na.rm = T),
+         ave_PO4 = mean(interp_PO4, na.rm = T),
+         sd_PO4 = sd(interp_PO4, na.rm = T),
          ave_DOC = mean(interp_doc, na.rm = T),
          sd_DOC = sd(interp_doc, na.rm = T),
          ave_DON = mean(interp_don, na.rm = T),
@@ -240,12 +243,13 @@ composite <- interpolated.df %>%
 
 ```{r}
 redis_N <- composite %>% 
-  drop_na(ave_N, ave_Si) %>% 
+  drop_na(ave_N, ave_Si, ave_PO4) %>% 
   group_by(Cruise, Station) %>% 
   filter(Target_Z <= Max_MLD) %>% 
   mutate(redis_N_vol = integrateTrapezoid(Target_Z, ave_N, type = "A")/Max_MLD,
-         redis_Si_vol = integrateTrapezoid(Target_Z, ave_Si,type = "A")/Max_MLD) %>% 
-  select(Cruise, Station,  degree_bin, redis_N_vol, redis_Si_vol) %>% 
+         redis_Si_vol = integrateTrapezoid(Target_Z, ave_Si,type = "A")/Max_MLD,
+         redis_PO4_vol = integrateTrapezoid(Target_Z, ave_PO4,type = "A")/Max_MLD) %>% 
+  select(Cruise, Station,  degree_bin, redis_N_vol, redis_Si_vol, redis_PO4_vol) %>% 
   distinct() %>% 
   ungroup() %>% 
   #we want to apply the same depth normalized values from the summer cruise to the spring profiles and the late autumn, where there are overlapping latitudinal bins. 
@@ -256,12 +260,15 @@ redis_N <- composite %>%
   arrange(degree_bin) %>% 
   mutate(redis_N_vol = ifelse(Cruise %in% c("AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_N_vol),
          redis_Si_vol = ifelse(Cruise %in% c( "AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_Si_vol),
+         redis_PO4_vol = ifelse(Cruise %in% c( "AT34", "AT39-6") & degree_bin %in% c(42, 44,48,50), NA, redis_PO4_vol),
          ave_redis_N = mean(redis_N_vol, na.rm = T),
          redis_N_vol = ifelse(is.na(redis_N_vol) & degree_bin == 44, ave_redis_N, redis_N_vol),
          ave_redis_Si = mean(redis_Si_vol, na.rm = T),
-         redis_Si_vol = ifelse(is.na(redis_Si_vol) & degree_bin == 44, ave_redis_Si, redis_Si_vol)) %>% 
-  select(-c(ave_redis_N, ave_redis_Si)) %>% 
-  fill(redis_N_vol:redis_Si_vol, .direction = "updown") %>% 
+         redis_Si_vol = ifelse(is.na(redis_Si_vol) & degree_bin == 44, ave_redis_Si, redis_Si_vol),
+         ave_redis_PO4 = mean(redis_PO4_vol, na.rm = T),
+         redis_PO4_vol = ifelse(is.na(redis_PO4_vol) & degree_bin == 44, ave_redis_Si, redis_Si_vol)) %>% 
+  select(-c(ave_redis_N, ave_redis_Si, ave_redis_PO4)) %>% 
+  fill(redis_N_vol:redis_PO4_vol, .direction = "updown") %>% 
   ungroup()
 ```
 
@@ -322,6 +329,11 @@ redis_areas <- composite %>%
          redis_N_phy_area = redis_N_vol * ave_pmax,
          redis_Si_area = redis_Si_vol * Max_MLD,
          redis_Si_100_area = redis_Si_vol * 100,
+         redis_PO4_area = redis_PO4_vol * Max_MLD,
+         redis_PO4_100_area = redis_PO4_vol * 100,
+         redis_PO4_ez_area = redis_PO4_vol * Ez,
+         redis_PO4_cm_area = redis_PO4_vol * ave_chlmax,
+         redis_PO4_phy_area = redis_PO4_vol * ave_pmax,
          redis_DOC_area = redis_DOC_vol * Max_MLD,
          redis_DOC_100_area = redis_DOC_vol * 100,
          redis_DOC_ez_area = redis_DOC_vol * Ez,
@@ -346,10 +358,12 @@ int_N <- composite %>%
   group_by(Cruise, Station) %>% 
   filter(Target_Z <= Max_MLD) %>%
    mutate(int_N_maxmld = integrateTrapezoid(Target_Z, ave_N,type = "A"),
-         int_Si_maxmld = integrateTrapezoid(Target_Z, ave_Si,type = "A")) %>% 
+         int_Si_maxmld = integrateTrapezoid(Target_Z, ave_Si,type = "A"),
+         int_PO4_maxmld = integrateTrapezoid(Target_Z, ave_PO4,type = "A")) %>% 
   filter(Target_Z <= Ez) %>%
    mutate(int_N_ez = integrateTrapezoid(Target_Z, ave_N,type = "A"),
-         int_Si_ez = integrateTrapezoid(Target_Z, ave_Si,type = "A")) %>% 
+         int_Si_ez = integrateTrapezoid(Target_Z, ave_Si,type = "A"),
+          int_PO4_ez = integrateTrapezoid(Target_Z, ave_PO4,type = "A")) %>% 
   ungroup() %>% 
   select(Cruise, Station, contains("int")) %>% 
   distinct() %>% 
@@ -359,7 +373,9 @@ int_N <- composite %>%
   mutate(int_N_100 = integrateTrapezoid(Target_Z, ave_N,type = "A"),
          int_N_100_vol = integrateTrapezoid(Target_Z, ave_N,type = "A")/100,
          int_Si_100 = integrateTrapezoid(Target_Z, ave_Si,type = "A"),
-         int_Si_100_vol = integrateTrapezoid(Target_Z, ave_Si,type = "A")/100) %>% 
+         int_Si_100_vol = integrateTrapezoid(Target_Z, ave_Si,type = "A")/100,
+         int_PO4_100 = integrateTrapezoid(Target_Z, ave_PO4,type = "A"),
+         int_PO4_100_vol = integrateTrapezoid(Target_Z, ave_PO4,type = "A")/100) %>% 
   filter(Target_Z <= ave_chlmax) %>% 
   mutate(int_N_cm = integrateTrapezoid(Target_Z, ave_N,type = "A"),
          int_N_cm_vol = integrateTrapezoid(Target_Z, ave_N,type = "A")/ave_chlmax) %>% 
@@ -471,12 +487,15 @@ processed_export <- redis_areas %>%
   mutate(delta_N = redis_N_vol - ave_N,
          NCP_umol = delta_N * 6.6,
          delta_Si = redis_Si_vol - ave_Si,
+         delta_PO4 = redis_PO4_vol - ave_PO4,
          delta_DOC = ave_DOC - redis_DOC_vol,
          delta_DON = ave_DON - redis_DON_vol,
          int_delta_N_100 = (redis_N_100_area - int_N_100)/1000,
          NCP_mol_100 = int_delta_N_100 * 6.6,
          int_delta_Si_100 = (redis_Si_100_area - int_Si_100)/1000,
+         int_delta_PO4_100 = (redis_PO4_100_area - int_PO4_100)/1000,
          int_delta_N_ez = (redis_N_ez_area - int_N_ez)/1000,
+         int_delta_PO4_ez = (redis_PO4_ez_area - int_PO4_ez)/1000,
          NCP_mol_ez = int_delta_N_ez * 6.6,
          int_delta_N_cm = (redis_N_cm_area - int_N_cm)/1000,
          NCP_mol_cm = int_delta_N_cm * 6.6,
@@ -515,7 +534,7 @@ processed_export <- redis_areas %>%
 processed_export[ is.na(processed_export) ] <- NA
 
 
-#saveRDS(processed_export, "~/naames_export_ms/Output/processed_export_for_bioavMS.5.7.20.rds")
+#saveRDS(processed_export, "~/naames_export_ms/Output/processed_export_for_bioavMS.5.14.20.rds")
 ```
  
  

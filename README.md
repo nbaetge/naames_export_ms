@@ -2,7 +2,7 @@
 
 This repository was created to document the analyses used for:
 
-Baetge, N., Graff, J.R., Behrenfeld, M.J, Carlson, C.A. (In Press). Net Community Production, Dissolved Organic Carbon Accumulation, and Export in the Western North Atlantic. Frontiers in Marine Science. 10.3389/fmars.2020.00227
+Baetge, N., Graff, J.R., Behrenfeld, M.J, Carlson, C.A. (2020). Net Community Production, Dissolved Organic Carbon Accumulation, and Export in the Western North Atlantic. Frontiers in Marine Science. 10.3389/fmars.2020.00227
 
 All code and data provided in this repository are freely available for use. However, the source data downloaded in Bottle_File.Rmd requires permission to access because they are owned and managed by various groups a part of the NAAMES program. Please contact me if you would like access to that data. 
 

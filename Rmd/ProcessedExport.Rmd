@@ -54,6 +54,26 @@ processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 
 ```{r warning = FALSE}
 #select nutrient and phytoplankton data for N2 and N3 
+npp <- read_xlsx("~/naames_bioav_ms/Input/NPP for Nick.xlsx", sheet = 2) %>% 
+  filter(!station %in% c("NA","N4S2RF")) %>% 
+  separate(station, into = c("Cruise", "Station"), sep = "S") %>% 
+  select(-Cruise) %>% 
+  mutate(Cruise = ifelse(Bloom_phase == "Accumulation phase", "AT39-6", NA),
+         Cruise = ifelse(Bloom_phase == "Climax transition", "AT34", Cruise),
+         Cruise = ifelse(Bloom_phase == "Equilibrium phase", "AT38", Cruise),
+         Cruise = ifelse(Bloom_phase == "Winter transition", "AT32", Cruise)) %>%
+  mutate(date = ymd(date)) %>% 
+  select(Cruise, date, Station, Ez) %>% 
+  mutate(Station = ifelse(Station %in% c("4a", "4b", "4c", "4d"), 4, Station),
+         Station = ifelse(Station %in% c("6a", "6b", "6c", "6d", "6e"), 6, Station),
+         Station = as.numeric(Station)) %>% 
+  rename(Date = date) %>% 
+  group_by(Cruise, Station) %>% 
+  mutate(ave_Ez = mean(Ez),
+         sd_Ez = sd(Ez)) %>% 
+  ungroup()
+
+
 subset <- processed_bf %>% 
   #omitting CampCN 98 because only measurements at 5 m and below 1500 m were taken. the interpolated values for this cast were as a result, not reliable
   filter(Cruise %in% c("AT32", "AT34", "AT38", "AT39-6"),
@@ -81,27 +101,9 @@ subset <- processed_bf %>%
          p = ifelse(Target_Z == 0 | is.na(p), max(p10, na.rm = T) , p)) %>% 
   select(-c(interp_N_N, interp_NO2, interp_NH4, interp_TDN, Density00, Density11, p5, p10)) %>% 
   ungroup() %>% 
-  left_join(., read_xlsx("~/naames_bioav_ms/Input/NPP for Nick.xlsx", sheet = 2) %>% 
-  filter(!station %in% c("NA","N4S2RF")) %>% 
-  separate(station, into = c("Cruise", "Station"), sep = "S") %>% 
-  select(-Cruise) %>% 
-  mutate(Cruise = ifelse(Bloom_phase == "Accumulation phase", "AT39-6", NA),
-         Cruise = ifelse(Bloom_phase == "Climax transition", "AT34", Cruise),
-         Cruise = ifelse(Bloom_phase == "Equilibrium phase", "AT38", Cruise),
-         Cruise = ifelse(Bloom_phase == "Winter transition", "AT32", Cruise)) %>% 
-  select(Cruise, Station, Ez) %>% 
-  mutate(Station = ifelse(Station %in% c("4a", "4b", "4c", "4d"), 4, Station),
-         Station = ifelse(Station %in% c("6a", "6b", "6c", "6d", "6e"), 6, Station),
-         Station = as.numeric(Station)) %>% 
-  group_by(Cruise, Station) %>% 
-  mutate(ave_Ez = mean(Ez)) %>%
-  ungroup() %>% 
-  select(-Ez) %>% 
-  distinct() %>% 
-  mutate_at(vars(ave_Ez), round)) %>% 
-  select(Cruise:Phyto_max, ave_Ez, Max_MLD,  everything()) %>% 
-  rename(Ez = ave_Ez)
-
+  left_join(., npp) %>% 
+  select(Cruise:Phyto_max, Ez, ave_Ez, sd_Ez, Max_MLD,  everything())
+  
 ```
 
 # Create Composite Station Casts

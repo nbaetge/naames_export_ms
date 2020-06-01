@@ -50,7 +50,7 @@ processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 
 ```
 
-# Subset Nitrogen and Phytoplankton Data
+# Subset Relevent Data
 
 ```{r warning = FALSE}
 #select nutrient and phytoplankton data for N2 and N3 
@@ -67,21 +67,18 @@ npp <- read_xlsx("~/naames_bioav_ms/Input/NPP for Nick.xlsx", sheet = 2) %>%
   mutate(Station = ifelse(Station %in% c("4a", "4b", "4c", "4d"), 4, Station),
          Station = ifelse(Station %in% c("6a", "6b", "6c", "6d", "6e"), 6, Station),
          Station = as.numeric(Station)) %>% 
-  rename(Date = date) %>% 
-  group_by(Cruise, Station) %>% 
-  mutate(ave_Ez = mean(Ez),
-         sd_Ez = sd(Ez)) %>% 
-  ungroup()
+  rename(Date = date) 
 
 subset <- processed_bf %>% 
   #omitting CampCN 98 because only measurements at 5 m and below 1500 m were taken. the interpolated values for this cast were as a result, not reliable
   filter(Cruise %in% c("AT32", "AT34", "AT38", "AT39-6"),
          !CampCN == 98) %>% 
-  #the multiday N2S4 drifted from the 48˚Lat bin to the 47˚Lat bin, but was a lagrangian study (followed float), so we'll denote all casts within station 4 as being in the 48˚N bin
+  #the multiday N2S4 drifted from the 48˚Lat bin to the 47˚Lat bin, but was a lagrangian study (followed float), so we'll denote all casts within station 4 as being in the 48˚N bin. This also occured with N1S7 - casts will be in the 40˚ bin with a max MLD of 484 m
   mutate(degree_bin = ifelse(Cruise == "AT34" & Station == "4", 48, degree_bin),
-         Max_MLD = ifelse(Cruise == "AT34" & Station == "4", 508, Max_MLD),) %>% 
-  select(Cruise, Latitude, Longitude, Date, degree_bin, Station, Season, Subregion,  CampCN, 
-         Max_MLD,  Target_Z,  interp_DOC, interp_N_N, interp_NO2, interp_NH4, interp_TDN, interp_PO4, interp_SiO4, Density00, Density11) %>% 
+         degree_bin = ifelse(Cruise == "AT32" & Station == "7", 40, degree_bin),
+         Max_MLD = ifelse(Cruise == "AT34" & Station == "4", 508, Max_MLD),
+          Max_MLD = ifelse(Cruise == "AT32" & Station == "7", 484, Max_MLD),) %>% 
+  select(Cruise, Latitude, Longitude, Date, degree_bin, Station, Season, Subregion,  CampCN, Max_MLD,  Target_Z,  interp_DOC, interp_N_N, interp_NO2, interp_NH4, interp_TDN, interp_PO4, interp_SiO4, Density00, Density11) %>% 
   #add column that averages the density measurements
   mutate(p = (Density00 + Density11)/2) %>%
   distinct() %>% 
@@ -96,8 +93,12 @@ subset <- processed_bf %>%
          p = ifelse(Target_Z == 0 | is.na(p), max(p10, na.rm = T) , p)) %>% 
   select(-c(interp_N_N, interp_NO2, interp_NH4, interp_TDN, Density00, Density11, p5, p10)) %>% 
   ungroup() %>% 
-  left_join(., npp) %>% 
-  select(Cruise:Max_MLD, Ez, ave_Ez, sd_Ez, Max_MLD,  everything())
+  full_join(., npp) %>% 
+  select(Cruise:Max_MLD, Ez, Max_MLD,  everything()) %>% 
+  group_by(Cruise, Station) %>% 
+  mutate(ave_Ez = mean(Ez, na.rm = T),
+         sd_Ez = sd(Ez, na.rm = T)) %>% 
+  ungroup() 
   
 ```
 
@@ -161,8 +162,10 @@ interpolations.df <- plyr::ldply(interpolations.list, data.frame) %>%
 #combine the interpolated and non-interpolated data frames
 interpolations.df$CampCN <- as.numeric(interpolations.df$CampCN)
 interpolated.df <- right_join(subset, interpolations.df) %>% 
-  select(Cruise:Max_MLD, Ez:sd_Ez, Target_Z, interp_p, interp_N, interp_PO4, interp_Si, interp_doc, interp_don ) %>% 
-  fill(Cruise:sd_Ez, .direction = "updown")
+  select(Cruise:Max_MLD, Ez, ave_Ez:sd_Ez, Target_Z, interp_p, interp_N, interp_PO4, interp_Si, interp_doc, interp_don ) %>% 
+  group_by(CampCN) %>% 
+  fill(Cruise:Subregion, Max_MLD:sd_Ez, .direction = "updown") %>% 
+  ungroup()
 
 ```
 
@@ -176,14 +179,19 @@ to_redis <- interpolated.df %>%
   mutate(ave_p = mean(interp_p, na.rm = T),
          sd_p = sd(interp_p, na.rm = T),
          ave_N = mean(interp_N, na.rm = T),
+         ave_N = ifelse(ave_N == "Nan", NA, ave_N),
          sd_N = sd(interp_N, na.rm = T),
          ave_PO4 = mean(interp_PO4, na.rm = T),
+         ave_PO4 = ifelse(ave_N == "Nan", NA, ave_PO4),
          sd_PO4 = sd(interp_PO4, na.rm = T),
          ave_DOC = mean(interp_doc, na.rm = T),
+         ave_DOC = ifelse(ave_N == "Nan", NA, ave_DOC),
          sd_DOC = sd(interp_doc, na.rm = T),
          ave_DON = mean(interp_don, na.rm = T),
+         ave_DON = ifelse(ave_N == "Nan", NA, ave_DON),
          sd_DON = sd(interp_don, na.rm = T),
          ave_Si = mean(interp_Si, na.rm = T),
+         ave_Si = ifelse(ave_N == "Nan", NA, ave_Si),
          sd_Si = sd(interp_Si, na.rm = T)
   ) %>% 
   ungroup() %>% 
@@ -381,6 +389,7 @@ processed_export[ is.na(processed_export) ] <- NA
 
 ```{r}
 saveRDS(processed_export, "~/naames_export_ms/Output/processed_export_for_bioavMS.5.29.20.rds")
+saveRDS(processed_export, "~/naames_bioav_ms/Input/processed_export_for_bioavMS.5.29.20.rds")
 ```
 
  

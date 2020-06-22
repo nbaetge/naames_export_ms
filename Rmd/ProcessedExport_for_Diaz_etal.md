@@ -1,51 +1,17 @@
----
-title: "Processed Export for Diaz et al., 2020"
-author: "Nicholas Baetge"
-date: "6/22/2020"
-output: github_document
----
+Processed Export for Diaz et al., 2020
+================
+Nicholas Baetge
+6/22/2020
 
 # Intro
 
-This document is shows how nitrate drawdown and NCP were calculated from the processed bottle file
+This document is shows how nitrate drawdown and NCP were calculated from
+the processed bottle
+file
 
-```{r include=FALSE}
-library(tidyverse)
-library(readxl)
-library(knitr)
-library(googledrive)
-library(googlesheets4)
-library(data.table)  
-#for interpolations
-library(zoo) 
-#for integrations
-library(oce) 
-library(scales)
-library(gridExtra)
-#for time
-library(lubridate)
+# Import Data
 
-custom_theme <- function() {
-  theme_test(base_size = 30) %+replace%
-    theme(legend.position = "top",
-          legend.title = element_blank(),
-          legend.spacing.x = unit(0.5,"cm"),
-          legend.background = element_rect(fill = "transparent",colour = NA),
-          legend.key = element_rect(fill = "transparent",colour = NA),
-          panel.background = element_rect(fill = "transparent",colour = NA),
-          plot.background = element_rect(fill = "transparent",colour = NA)) 
-}
-
-levels = c("GS/Sargasso", "Subtropical", "Temperate", "Subpolar",  "AT39-6", "AT34", "AT38", "AT32", "Early Spring", "Late Spring", "Early Autumn", "Late Autumn")
-
-custom.colors <- c("AT39" = "#377EB8", "AT34" = "#4DAF4A", "AT38" = "#E41A1C", "AT32" = "#FF7F00", "Temperate" = "#A6CEE3", "Subpolar" = "#377EB8", "Subtropical" = "#FB9A99", "GS/Sargasso" = "#E41A1C", "Early Spring" = "#377EB8", "Late Spring" = "#4DAF4A","Early Autumn" = "#E41A1C", "Summer" = "#E41A1C", "Late Autumn" = "#FF7F00", "Gv2_2019" = "#377EB8", "WOA18_MN" = "#4DAF4A", "WOA18_AN" = "#E41A1C")
-
-
-```
-
-# Import Data 
-
-```{r}
+``` r
 processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 
 mld_diaz <- read_excel("~/naames_export_ms/Input/MLD_Diaz_6.19.2020.xlsx") %>% 
@@ -61,13 +27,11 @@ mld_diaz <- read_excel("~/naames_export_ms/Input/MLD_Diaz_6.19.2020.xlsx") %>%
   mutate_at(vars(Station), as.numeric) %>% 
   select(-NAAMES) %>% 
   rename(Diaz_MLD = Z_MLD) 
-
 ```
 
 # Subset Relevent Data
 
-```{r warning = FALSE}
-
+``` r
 subset <- processed_bf %>% 
   left_join(., mld_diaz) %>% 
   select(Cruise:N2, Diaz_MLD, everything()) %>% 
@@ -82,14 +46,16 @@ subset <- processed_bf %>%
   select(Cruise, Latitude, Longitude, Date, degree_bin, Station, Season, Subregion,  CampCN, Max_MLD,  Diaz_MLD, Target_Z,  interp_DOC) %>% 
   distinct() %>% 
   drop_na(interp_DOC)
-  
 ```
+
+    ## Joining, by = c("Cruise", "Station", "Date")
 
 # Interpolate Depth of MLD
 
-We'll interpolate variables to the depth of the euphotic zone for each cast separately
+We’ll interpolate variables to the depth of the euphotic zone for each
+cast separately
 
-```{r warning = FALSE, message = FALSE}
+``` r
 #split the df by CampCN  
 add_mld.list <- split(subset, subset$CampCN)
 
@@ -144,14 +110,13 @@ interpolated.df <- right_join(subset, interpolations.df) %>%
   group_by(CampCN) %>% 
   fill(Cruise:Subregion, Max_MLD:Diaz_MLD, .direction = "updown") %>% 
   ungroup()
-
 ```
 
 ## Average Variable Values
 
-We'll use these averages to redistribute profiles
+We’ll use these averages to redistribute profiles
 
-```{r}
+``` r
 to_redis <- interpolated.df %>%
   group_by(Cruise, Station, Target_Z) %>% 
   mutate(ave_DOC = mean(interp_doc, na.rm = T),
@@ -167,13 +132,11 @@ to_redis <- interpolated.df %>%
   distinct() %>% 
   arrange(Cruise, Station, Target_Z) %>% 
   ungroup()
-
 ```
-
 
 # Redistribute DOC Profiles
 
-```{r}
+``` r
 redis_DOC <- to_redis %>% 
   drop_na(ave_DOC) %>% 
   group_by(Cruise, Station) %>% 
@@ -193,21 +156,18 @@ redis_DOC <- to_redis %>%
   arrange(Cruise, Station)
 ```
 
-# Calculate Mixed Profile Areas in Diaz_MLD
+# Calculate Mixed Profile Areas in Diaz\_MLD
 
-```{r message = FALSE}
+``` r
 redis_areas <- interpolated.df %>% 
   left_join(., redis_DOC) %>% 
   mutate(redis_DOC_diaz_mld_area = redis_DOC_vol * Diaz_MLD ) %>% 
   drop_na(interp_doc) 
-
-  
 ```
 
+# Integrate DOC Profiles
 
-# Integrate DOC Profiles 
-
-```{r message = F}
+``` r
 int_DOC <- redis_areas %>% 
   group_by(Cruise, Station, CampCN) %>% 
   filter(Target_Z <= Max_MLD) %>%
@@ -219,11 +179,9 @@ int_DOC <- redis_areas %>%
   distinct() 
 ```
 
+# Calculate ∆DOC in Diaz\_MLD
 
-# Calculate  ∆DOC in Diaz_MLD
-
-
-```{r message = FALSE}
+``` r
 processed_export <- redis_areas %>% 
   left_join(., int_DOC) %>% 
   group_by(Cruise, Station, CampCN ) %>% 
@@ -237,40 +195,14 @@ processed_export <- redis_areas %>%
          accm_doc_vol = vol_delta_DOC_diaz_mld)
 
 processed_export[ is.na(processed_export) ] <- NA
-
 ```
- 
+
 # Save Data
 
-```{r}
+``` r
 write_csv(processed_export, "~/naames_export_ms/Output/processed_export_for_Diaz.6.22.20.csv")
 ```
 
-# Plot 
+# Plot
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, fig.height = 8, fig.width = 16, fig.align = "center", warning = FALSE}
-deldoc.bar <- processed_export %>% 
-  group_by(Season, Station, degree_bin) %>% 
-  mutate(ave = mean(accm_doc_vol),
-         sd = sd(accm_doc_vol)) %>% 
-  ungroup() %>% 
-  mutate_at(vars(degree_bin), as.character) %>% 
-  mutate(Phase = ifelse(Season == "Early Spring", "Accumulation", NA),
-         Phase = ifelse(Season == "Late Spring", "Climax", Phase),
-         Phase = ifelse(Season == "Early Autumn", "Decline", Phase),
-         Phase = ifelse(Season == "Late Autumn", "Winter Transition", Phase)) %>% 
-  ##PLOT
-  ggplot(aes(x = degree_bin, y =  ave, group = interaction(Season, Station, degree_bin)))  + 
-  geom_bar(position = position_dodge(), stat = "identity", color = "black", fill = "#999999", alpha = 1) +
-  geom_errorbar(aes(ymin = ave - sd, ymax = ave + sd), position = position_dodge(width = 0.9), stat = "identity", width = 0.1, size = 0.5) +
-  labs(x = expression(italic("Latitude, ˚N")), y = expression(italic(paste("∆DOC, µmol C L"^-1))), colour = expression(italic(""))) +
-  scale_y_continuous(breaks = pretty_breaks()) +
-  custom_theme() +
-  facet_grid(~factor(Phase, levels = c("Winter Transition", "Accumulation", "Climax", "Decline")), scales = "free") +
-  #theme(strip.background = element_blank(), strip.text = element_blank()) +
-  guides(fill = F)
-
-deldoc.bar
-```
-
- 
+<img src="ProcessedExport_for_Diaz_etal_files/figure-gfm/unnamed-chunk-11-1.png" style="display: block; margin: auto;" />

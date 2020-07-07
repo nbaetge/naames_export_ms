@@ -46,7 +46,7 @@ custom.colors <- c("AT39" = "#377EB8", "AT34" = "#4DAF4A", "AT38" = "#E41A1C", "
 # Import Data 
 
 ```{r}
-processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
+processed_bf <-  read_rds("~/GITHUB/naames_export_ms/Output/processed_bf.2.2020.rds")
 
 ```
 
@@ -54,7 +54,7 @@ processed_bf <-  read_rds("~/naames_export_ms/Output/processed_bf.2.2020.rds")
 
 ```{r warning = FALSE}
 #select nutrient and phytoplankton data for N2 and N3 
-npp <- read_xlsx("~/naames_bioav_ms/Input/NPP for Nick.xlsx", sheet = 2) %>% 
+npp <- read_xlsx("~/GITHUB/naames_bioav_ms/Input/NPP for Nick.xlsx", sheet = 2) %>% 
   filter(!station %in% c("NA","N4S2RF")) %>% 
   separate(station, into = c("Cruise", "Station"), sep = "S") %>% 
   select(-Cruise) %>% 
@@ -119,7 +119,7 @@ ave_phyto <- subset %>%
          sd_chlmax = sd(Chl_max),
          ave_pmax = mean(Phyto_max),
          sd_pmax = sd(Phyto_max)) %>% 
-  mutate_at(vars(ave_chlmax:sd_pmax), round) %>% 
+  mutate_at(vars(ave_Ez, sd_Ez, ave_chlmax:sd_pmax), round) %>% 
   ungroup()
 
 #split the df by CampCN  
@@ -142,7 +142,7 @@ add.func <- function(morty){
     arrange(CampCN, Target_Z)
    
    schwifty[nrow(schwifty) + 1,] <- NA
-  schwifty$Target_Z[is.na(schwifty$Target_Z)] <- schwifty$Ez
+  schwifty$Target_Z[is.na(schwifty$Target_Z)] <- schwifty$ave_Ez
    meeseek <- schwifty %>% 
      fill(., Cruise:Max_MLD, .direction = c("updown")) %>% 
       fill(., ave_chlmax:sd_pmax, .direction = c("updown")) %>% 
@@ -326,25 +326,25 @@ redis_areas <- composite %>%
   left_join(., redis_DON) %>% 
   mutate(redis_N_area = redis_N_vol * Max_MLD,
          redis_N_100_area = redis_N_vol * 100,
-         redis_N_ez_area = redis_N_vol * Ez,
+         redis_N_ez_area = redis_N_vol * ave_Ez,
          redis_N_cm_area = redis_N_vol * ave_chlmax,
          redis_N_phy_area = redis_N_vol * ave_pmax,
          redis_Si_area = redis_Si_vol * Max_MLD,
          redis_Si_100_area = redis_Si_vol * 100,
          redis_PO4_area = redis_PO4_vol * Max_MLD,
          redis_PO4_100_area = redis_PO4_vol * 100,
-         redis_PO4_ez_area = redis_PO4_vol * Ez,
+         redis_PO4_ez_area = redis_PO4_vol * ave_Ez,
          redis_PO4_cm_area = redis_PO4_vol * ave_chlmax,
          redis_PO4_phy_area = redis_PO4_vol * ave_pmax,
          redis_DOC_area = redis_DOC_vol * Max_MLD,
          redis_DOC_100_area = redis_DOC_vol * 100,
-         redis_DOC_ez_area = redis_DOC_vol * Ez,
+         redis_DOC_ez_area = redis_DOC_vol * ave_Ez,
          redis_DOC_cm_area = redis_DOC_vol * ave_chlmax,
          redis_DOC_phy_area = redis_DOC_vol * ave_pmax,
          redis_DOC_100_maxmld_area = redis_DOC_vol * (Max_MLD - 100),
          redis_DON_area = redis_DON_vol * Max_MLD,
          redis_DON_100_area = redis_DON_vol * 100,
-         redis_DON_ez_area = redis_DON_vol * Ez,
+         redis_DON_ez_area = redis_DON_vol * ave_Ez,
          redis_DON_cm_area = redis_DON_vol * ave_chlmax,
          redis_DON_phy_area = redis_DON_vol * ave_pmax,
          redis_DON_100_maxmld_area = redis_DON_vol * (Max_MLD - 100)
@@ -362,7 +362,7 @@ int_N <- composite %>%
    mutate(int_N_maxmld = integrateTrapezoid(Target_Z, ave_N,type = "A"),
          int_Si_maxmld = integrateTrapezoid(Target_Z, ave_Si,type = "A"),
          int_PO4_maxmld = integrateTrapezoid(Target_Z, ave_PO4,type = "A")) %>% 
-  filter(Target_Z <= Ez) %>%
+  filter(Target_Z <= ave_Ez) %>%
    mutate(int_N_ez = integrateTrapezoid(Target_Z, ave_N,type = "A"),
          int_Si_ez = integrateTrapezoid(Target_Z, ave_Si,type = "A"),
           int_PO4_ez = integrateTrapezoid(Target_Z, ave_PO4,type = "A")) %>% 
@@ -397,7 +397,7 @@ int_DOC <- composite %>%
   group_by(Cruise, Station) %>% 
   filter(Target_Z <= Max_MLD) %>%
   mutate(int_DOC_maxmld = integrateTrapezoid(Target_Z, ave_DOC,type = "A")) %>% 
-  filter(Target_Z <= Ez) %>%
+  filter(Target_Z <= ave_Ez) %>%
   mutate(int_DOC_ez = integrateTrapezoid(Target_Z, ave_DOC,type = "A")) %>% 
   ungroup() %>% 
   select(Cruise, Station, contains("int")) %>% 
@@ -428,7 +428,7 @@ int_DON <- composite %>%
   group_by(Cruise, Station) %>% 
   filter(Target_Z <= Max_MLD) %>%
   mutate(int_DON_maxmld = integrateTrapezoid(Target_Z, ave_DON,type = "A")) %>% 
-  filter(Target_Z <= Ez) %>%
+  filter(Target_Z <= ave_Ez) %>%
   mutate(int_DON_ez = integrateTrapezoid(Target_Z, ave_DON,type = "A")) %>% 
   ungroup() %>% 
   select(Cruise, Station, contains("int")) %>% 
@@ -536,7 +536,8 @@ processed_export <- redis_areas %>%
 processed_export[ is.na(processed_export) ] <- NA
 
 
-#saveRDS(processed_export, "~/naames_export_ms/Output/processed_export_for_bioavMS.5.14.20.rds")
+saveRDS(processed_export, "~/GITHUB/naames_export_ms/Output/processed_export_for_bioavMS.6.7.20-2.rds")
+saveRDS(processed_export, "~/GITHUB/naames_bioav_ms/Input/processed_export_for_bioavMS.6.7.20-2.rds")
 ```
  
  
@@ -571,6 +572,7 @@ n.plot <-  processed_export %>%
 
 n.plot
 ```
+
 ```{r include = FALSE}
 #ggsave("s1a.jpg", n.plot, device = "jpg",  width = 20, height = 8, path = "~/Desktop/Export_MS/Submission2/") 
 ```

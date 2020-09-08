@@ -362,7 +362,7 @@ processed_bf <- interpolated.df %>%
   left_join(., chl_max.df) %>% 
   left_join(., phyto_max.df) %>% 
   left_join(., dna) %>% 
-  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
+  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, TDAA, TDAA_sd, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
   distinct() %>% 
   group_by(CampCN) %>%
   fill(Chl_max, .direction = "updown") %>% 
@@ -380,5 +380,5 @@ processed_bf <- interpolated.df %>%
 # processed_bf$Season <- factor(processed_bf$Season, levels = levels)
 # processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
 
-#saveRDS(processed_bf,"~/GITHUB/naames_export_ms/Output/processed_bf.8.2020.rds")
+saveRDS(processed_bf,"~/GITHUB/naames_export_ms/Output/processed_bf.8.2020.rds")
 ```

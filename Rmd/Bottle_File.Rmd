@@ -36,14 +36,17 @@ levels = c("GS/Sargasso", "Subtropical", "Temperate", "Subpolar",  "AT39-6", "AT
 # Import Data
 
 ```{r message = F, warning = FALSE}
-google.df <- read_sheet("https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=1446474071", sheet = "Bottle File", skip = 1) %>% 
-  #Station variable is read as numeric, so read_sheet turns station "1A" into an NA.
-  #we'll replace it with a 0
-  mutate(Station = ifelse(is.na(Station), 0, Station))
+headers <- read_sheet("https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=1446474071", sheet = "Bottle File Headers", skip = 0)
+
+cols <- headers %>% 
+  pull(col_type) %>% 
+  str_c(., collapse = "")
+
+google.df <-  read_sheet("https://docs.google.com/spreadsheets/d/1zw-W1k__BeuJg1oQpQQ_XT7zWLiY3dfL-dTaQ0pzN5Q/edit#gid=1446474071", sheet = "Bottle File", skip = 1, col_types = cols)
 
 
 #load the float-station matchup with the maximum MLD data
-float_maxmld.df <- read_rds("~/Google Drive File Stream/Shared Drives/NAAMES_Carlson/DATA/FINAL/MANUSCRIPT_DATA/Export_MS/Output/max_mld.rds") %>% 
+float_maxmld.df <- read_rds("~/GITHUB/naames_export_ms/Output/max_mld.rds") %>% 
   select(bin, max_mld) %>%
   rename(degree_bin = bin) %>% 
   distinct()
@@ -58,7 +61,7 @@ google2.df <- google.df %>%
   select(-lat) %>% 
   select(Cruise:CampCN, Cast_Type, Z_MLD:SLA_std,EZD:Max_MLD, everything()) %>% 
   ungroup() %>% 
-  select(Cruise:Cast_Type, degree_bin, Max_MLD,  Eddy:EZD_Morel, Z_MLD:N2, Niskin:N_N_sd, NO2:DMS, DNA_ID, Phytodetritus) %>% 
+  select(Cruise:Cast_Type, degree_bin, Max_MLD,  Eddy:EZD_Morel, Z_MLD:N2, Niskin:N_N_sd, NO2:DMS, TDAA:Lys, DNA_ID, Phytodetritus) %>% 
   ungroup()
 
 ```
@@ -289,6 +292,7 @@ interp_Fuco <- as.numeric(na.approx(to_interpolate.df$Fuco, na.rm = F))
 interp_Perid <- as.numeric(na.approx(to_interpolate.df$Perid, na.rm = F))
 interp_BactProd_C <- as.numeric(na.approx(to_interpolate.df$BactProd_C, na.rm = F))
 interp_BactAbund <- as.numeric(na.approx(to_interpolate.df$BactAbund, na.rm = F))
+interp_TDAA <- as.numeric(na.approx(to_interpolate.df$TDAA, na.rm = F))
 interp_Pro_Influx <- as.numeric(na.approx(to_interpolate.df$Pro_Influx, na.rm = F))
 interp_Syn_Influx <- as.numeric(na.approx(to_interpolate.df$Syn_Influx, na.rm = F))
 interp_Pico_Influx <- as.numeric(na.approx(to_interpolate.df$Pico_Influx, na.rm = F))
@@ -304,7 +308,7 @@ interpolations.df <- data.frame(Target_Z, interp_Temp, interp_Sal,
                                 interp_TChl_a, interp_DV_Chl_a, 
                                 interp_Zea, interp_Hex_fuco, interp_MV_Chl_b,
                                 interp_Fuco, interp_Perid, 
-                                interp_BactProd_C, interp_BactAbund,
+                                interp_BactProd_C, interp_BactAbund, interp_TDAA,
                                 interp_Pro_Influx, interp_Syn_Influx,
                                 interp_Pico_Influx , interp_Nano_Influx, interp_phytodetritus)
 }
@@ -386,7 +390,7 @@ processed_bf <- interpolated.df %>%
 # processed_bf$Season <- factor(processed_bf$Season, levels = levels)
 # processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
 
-#saveRDS(processed_bf,"~/naames_export_ms/Output/processed_bf.2.2020.rds")
+#saveRDS(processed_bf,"~/GITHUB/naames_export_ms/Output/processed_bf.8.2020.rds")
 
 ```
 

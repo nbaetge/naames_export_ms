@@ -45,7 +45,9 @@ google2.df <- google.df %>%
   select(Cruise:CampCN, Cast_Type, Z_MLD:SLA_std,EZD:Max_MLD, everything()) %>% 
   ungroup() %>% 
   select(Cruise:Cast_Type, degree_bin, Max_MLD,  Eddy:EZD_Morel, Z_MLD:N2, Niskin:N_N_sd, NO2:DMS, TDAA:Lys, DNA_ID, Phytodetritus) %>% 
-  ungroup()
+  ungroup() %>% 
+  mutate(tdaa_c = (Asp*4) + (Glu * 5) + (His * 6) + (Ser * 3) + (Arg * 6) + (Thr * 4) + (Gly * 2) + (Tau * 2) + (Bala * 3) + (Tyr * 9) + (Ala * 3) + (GABA * 4) + (Met * 5) + (Val * 5) + (Phe * 9) + (Ile * 6) + (Leu * 6) + (Lys * 6)) %>%  #carbon-normalized TDAA 
+  select(Cruise:TDAA_sd, tdaa_c, everything()) 
 ```
 
 # Wrangle Data
@@ -276,6 +278,7 @@ interp_Perid <- as.numeric(na.approx(to_interpolate.df$Perid, na.rm = F))
 interp_BactProd_C <- as.numeric(na.approx(to_interpolate.df$BactProd_C, na.rm = F))
 interp_BactAbund <- as.numeric(na.approx(to_interpolate.df$BactAbund, na.rm = F))
 interp_TDAA <- as.numeric(na.approx(to_interpolate.df$TDAA, na.rm = F))
+interp_tdaa_c <- as.numeric(na.approx(to_interpolate.df$tdaa_c, na.rm = F))
 interp_Pro_Influx <- as.numeric(na.approx(to_interpolate.df$Pro_Influx, na.rm = F))
 interp_Syn_Influx <- as.numeric(na.approx(to_interpolate.df$Syn_Influx, na.rm = F))
 interp_Pico_Influx <- as.numeric(na.approx(to_interpolate.df$Pico_Influx, na.rm = F))
@@ -291,7 +294,7 @@ interpolations.df <- data.frame(Target_Z, interp_Temp, interp_Sal,
                                 interp_TChl_a, interp_DV_Chl_a, 
                                 interp_Zea, interp_Hex_fuco, interp_MV_Chl_b,
                                 interp_Fuco, interp_Perid, 
-                                interp_BactProd_C, interp_BactAbund, interp_TDAA,
+                                interp_BactProd_C, interp_BactAbund, interp_TDAA, interp_tdaa_c,
                                 interp_Pro_Influx, interp_Syn_Influx,
                                 interp_Pico_Influx , interp_Nano_Influx, interp_phytodetritus)
 }
@@ -362,11 +365,11 @@ processed_bf <- interpolated.df %>%
   left_join(., chl_max.df) %>% 
   left_join(., phyto_max.df) %>% 
   left_join(., dna) %>% 
-  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, TDAA, TDAA_sd, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
+  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, TDAA:Lys, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
   distinct() %>% 
   group_by(CampCN) %>%
   fill(Chl_max, .direction = "updown") %>% 
-  ungroup()
+  ungroup() 
 ```
 
     ## Joining, by = c("Cruise", "Station", "CampCN", "degree_bin", "Target_Z")

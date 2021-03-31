@@ -292,6 +292,7 @@ interp_MV_Chl_b <- as.numeric(na.approx(to_interpolate.df$MV_Chl_b, na.rm = F))
 interp_Hex_fuco <- as.numeric(na.approx(to_interpolate.df$Hex_fuco, na.rm = F))
 interp_Fuco <- as.numeric(na.approx(to_interpolate.df$Fuco, na.rm = F))
 interp_Perid <- as.numeric(na.approx(to_interpolate.df$Perid, na.rm = F))
+interp_BactProd <- as.numeric(na.approx(to_interpolate.df$BactProd, na.rm = F))
 interp_BactProd_C <- as.numeric(na.approx(to_interpolate.df$BactProd_C, na.rm = F))
 interp_BactAbund <- as.numeric(na.approx(to_interpolate.df$BactAbund, na.rm = F))
 interp_TDAA <- as.numeric(na.approx(to_interpolate.df$TDAA, na.rm = F))
@@ -310,7 +311,7 @@ interpolations.df <- data.frame(Target_Z, interp_Temp, interp_Sal,
                                 interp_Chl_a_Fluor, interp_Phaeo_Fluor, 
                                 interp_TChl_a, interp_DV_Chl_a, 
                                 interp_Zea, interp_Hex_fuco, interp_MV_Chl_b,
-                                interp_Fuco, interp_Perid, 
+                                interp_Fuco, interp_Perid, interp_BactProd,
                                 interp_BactProd_C, interp_BactAbund, interp_TDAA, interp_tdaa_c,
                                 interp_Pro_Influx, interp_Syn_Influx,
                                 interp_Pico_Influx , interp_Nano_Influx, interp_phytodetritus)
@@ -383,7 +384,7 @@ processed_bf <- interpolated.df %>%
   left_join(., chl_max.df) %>% 
   left_join(., phyto_max.df) %>% 
   left_join(., dna) %>% 
-  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, TDAA:Lys, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
+  select(Cruise:Station, Date:decimaldate,  Latitude:Longitude, degree_bin, CruiseCN:CampCN,  Chl_max,  Phyto_max, Max_MLD:Target_Z, Pressure:UVP5, DOC:Phaeo_Fluor, TDAA:Lys, BactProd, BactProd_sd, BactProd_C, BactProd_C_sd, BactAbund, BactAbund_sd,TChl_a, NPP, DMS, TPhyto_Sytox:Pico_ROS, Phytodetritus, interp_Temp:interp_phytodetritus, DNA_ID)  %>%
   distinct() %>% 
   group_by(CampCN) %>%
   fill(Chl_max, .direction = "updown") %>% 
@@ -395,6 +396,8 @@ processed_bf <- interpolated.df %>%
 # processed_bf$Subregion <- factor(processed_bf$Subregion, levels = levels)
 
 saveRDS(processed_bf,"~/GITHUB/naames_export_ms/Output/processed_bf.8.2020.rds")
+
+saveRDS(processed_bf,"~/GITHUB/naames_multiday/Input/master/processed_bf.8.2020.rds")
 
 ```
 

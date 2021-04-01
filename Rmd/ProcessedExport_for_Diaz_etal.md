@@ -371,7 +371,10 @@ processed_export <- redis_areas %>%
   select(Cruise:z_mld_sigT, Target_Z, doc:redis_doc_corr_vol, vol_delta_doc_diaz_mld,  vol_delta_doc_corr_diaz_mld) %>% 
   distinct() %>% 
   rename(accm_doc_vol = vol_delta_doc_diaz_mld,
-         accm_doc_corr_vol = vol_delta_doc_corr_diaz_mld)
+         accm_doc_corr_vol = vol_delta_doc_corr_diaz_mld) %>% 
+  mutate(accm_doc_vol = ifelse(Cruise == "AT32", NA, accm_doc_vol),
+         accm_doc_corr_vol = ifelse(Cruise == "AT32", NA, accm_doc_corr_vol)
+         )
 
 processed_export[ is.na(processed_export) ] <- NA
 

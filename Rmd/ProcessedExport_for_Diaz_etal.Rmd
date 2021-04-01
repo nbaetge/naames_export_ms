@@ -398,7 +398,10 @@ processed_export <- redis_areas %>%
   select(Cruise:z_mld_sigT, Target_Z, doc:redis_doc_corr_vol, vol_delta_doc_diaz_mld,  vol_delta_doc_corr_diaz_mld) %>% 
   distinct() %>% 
   rename(accm_doc_vol = vol_delta_doc_diaz_mld,
-         accm_doc_corr_vol = vol_delta_doc_corr_diaz_mld)
+         accm_doc_corr_vol = vol_delta_doc_corr_diaz_mld) %>% 
+  mutate(accm_doc_vol = ifelse(Cruise == "AT32", NA, accm_doc_vol),
+         accm_doc_corr_vol = ifelse(Cruise == "AT32", NA, accm_doc_corr_vol)
+         )
 
 processed_export[ is.na(processed_export) ] <- NA
 
@@ -472,7 +475,7 @@ reg1.plot <- processed_export %>%
   theme_classic2(base_size = 16) +
   theme(legend.title = element_blank()) +
   guides(color = F) +
-  annotate( geom = "text", label = expression(atop("y = 0.98x - 0.41", paste("r"^2," = 0.99, ", italic("p "), "= 0"))), x = 30, y = 2, size = 6) 
+  annotate( geom = "text", label = expression(atop("y = 0.96x - 0.35", paste("r"^2," = 0.97, ", italic("p "), "= 0"))), x = 13, y = 0.5, size = 6) 
   
 
 
